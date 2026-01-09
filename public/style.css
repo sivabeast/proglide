@@ -1,0 +1,252 @@
+        /* =====================================================
+   ROOT THEME (FLIPKART / AMAZON FEEL)
+===================================================== */
+        :root {
+            --primary: #2874f0;
+            --primary-dark: #1e5fd8;
+            --success: #16a34a;
+            --danger: #e11d48;
+
+            --bg: #f1f3f6;
+            --surface: #ffffff;
+
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --radius-sm: 8px;
+            --shadow-soft: 0 2px 6px rgba(0, 0, 0, .08);
+            --shadow-hover: 0 10px 24px rgba(0, 0, 0, .18);
+
+            --transition: .28s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        /* =====================================================
+   RESET
+===================================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: Segoe UI, system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            padding-top: 135px;
+        }
+
+        a {
+            text-decoration: none !important;
+            color: inherit;
+        }
+
+        /* =====================================================
+   PRODUCT GRID (DENSE LIKE AMAZON)
+===================================================== */
+        .grid {
+            max-width: 1600px;
+            margin: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+
+        /* =====================================================
+   PRODUCT CARD
+===================================================== */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-7px);
+            box-shadow: var(--shadow-hover);
+            border-color: #d1d5db;
+        }
+
+        /* =====================================================
+   IMAGE AREA
+===================================================== */
+        .product-link {
+            padding: 14px 0px 0px 0px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            transition: var(--transition);
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        /* =====================================================
+   PRODUCT NAME
+===================================================== */
+        .name {
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            color: #0f172a;
+        }
+
+        /* =====================================================
+   CARD BODY
+===================================================== */
+        .body {
+            padding: 0px 0px 0px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        /* PRICE */
+        .price {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111;
+            text-align: center;
+            margin: 8px 0 12px;
+        }
+
+        /* =====================================================
+   ACTION BUTTONS
+===================================================== */
+        .buttons {
+            margin-top: auto;
+            display: flex;
+            gap: 2px;
+        }
+
+        /* ADD TO CART */
+        .btn-cart {
+            flex: 1;
+            height: 36px;
+            background: var(--primary);
+            color: #fff;
+
+            font-size: 12.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-cart:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-cart.added {
+            background: var(--success);
+        }
+
+        /* WISHLIST */
+        .btn-love {
+            width: 40px;
+            height: 36px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            transition: var(--transition);
+        }
+
+        .btn-love:hover {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .btn-love.active {
+            background: #ffe4e6;
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* =====================================================
+   DESKTOP BREAKPOINTS
+===================================================== */
+        @media(max-width:1400px) {
+            .grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media(max-width:1100px) {
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* =====================================================
+   TABLET VIEW (LIKE FLIPKART)
+===================================================== */
+        @media(max-width:768px) {
+            body {
+                padding-top: 120px;
+            }
+
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 14px;
+                padding: 16px;
+            }
+
+            .card img {
+                width: 140px;
+                height: 140px;
+            }
+        }
+
+        /* =====================================================
+   MOBILE VIEW (AMAZON STYLE)
+===================================================== */
+        @media(max-width:576px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                padding: 12px;
+            }
+
+            .card img {
+                width: 125px;
+                height: 125px;
+            }
+
+            .name {
+                font-size: 12.5px;
+            }
+
+            .price {
+                font-size: 16px;
+            }
+
+            .btn-cart {
+                font-size: 12px;
+                height: 34px;
+            }
+
+            .btn-love {
+                width: 36px;
+                height: 34px;
+            }
+        }

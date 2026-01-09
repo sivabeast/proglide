@@ -1,0 +1,529 @@
+/* =====================================================
+   ROOT THEME
+===================================================== */
+:root {
+    --primary: #2874f0;
+    --primary-dark: #1e5fd8;
+    --success: #16a34a;
+    --danger: #e11d48;
+
+    --bg: #f1f3f6;
+    --surface: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+
+    --shadow-soft: 0 2px 8px rgba(0,0,0,.08);
+    --shadow-hover: 0 12px 28px rgba(0,0,0,.18);
+
+    --transition: .3s ease;
+}
+
+/* =====================================================
+   RESET
+===================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg);
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    color: var(--text);
+    padding-top: 150px;
+}
+
+a {
+    text-decoration: none !important;
+    color: inherit;
+}
+
+/* =====================================================
+   PAGE CONTAINER
+===================================================== */
+.pcontainer {
+    max-width: 1600px;
+    margin: auto;
+    padding: 0 16px;
+}
+
+/* =====================================================
+   SEARCH BAR
+===================================================== */
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin: 0px 0px;
+}
+
+.search-bar input {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    
+}
+
+.search-bar input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-soft);
+}
+
+.btn {
+    padding: 10px 18px;
+    border: 2px solid #000;
+    border-radius: 22px;
+    background: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn:hover {
+    background: #000;
+    color: #fff;
+}
+
+/* =====================================================
+   FILTER TOGGLE (MOBILE)
+===================================================== */
+.filter-toggle {
+    display: none;
+    margin-bottom: 14px;
+}
+
+.filter-toggle button {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: #000;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+}
+
+/* =====================================================
+   PAGE LAYOUT
+===================================================== */
+.page-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* =====================================================
+   FILTER BOX
+===================================================== */
+.filter-box {
+    width: 260px;
+    background: var(--surface);
+    padding: 18px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    flex-shrink: 0;
+}
+
+.filter-group {
+    margin-bottom: 18px;
+}
+
+.filter-group b {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+
+.filter-box label {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.filter-box select {
+    width: 100%;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+        /* =====================================================
+   PRODUCT GRID (DENSE LIKE AMAZON)
+===================================================== */
+        .grid {
+            max-width: 1600px;
+            margin: 10px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        width: 100%;
+        }
+
+        /* =====================================================
+   PRODUCT CARD
+===================================================== */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-7px);
+            box-shadow: var(--shadow-hover);
+            border-color: #d1d5db;
+        }
+
+        /* =====================================================
+   IMAGE AREA
+===================================================== */
+        .product-link {
+            padding: 14px 0px 0px 0px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            transition: var(--transition);
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        /* =====================================================
+   PRODUCT NAME
+===================================================== */
+        .name {
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            color: #0f172a;
+        }
+
+        /* =====================================================
+   CARD BODY
+===================================================== */
+        .body {
+            padding: 0px 0px 0px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        /* PRICE */
+        .price {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111;
+            text-align: center;
+            margin: 8px 0 12px;
+        }
+
+        /* =====================================================
+   ACTION BUTTONS
+===================================================== */
+        .buttons {
+            margin-top: auto;
+            display: flex;
+            gap: 2px;
+        }
+
+        /* ADD TO CART */
+        .btn-cart {
+            flex: 1;
+            height: 36px;
+            background: var(--primary);
+            color: #fff;
+
+            font-size: 12.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .btn-cart:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-cart.added {
+            background: var(--success);
+        }
+
+        /* WISHLIST */
+        .btn-love {
+            width: 40px;
+            height: 36px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            transition: var(--transition);
+        }
+
+        .btn-love:hover {
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .btn-love.active {
+            background: #ffe4e6;
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+/* =====================================================
+   RESPONSIVE BREAKPOINTS
+===================================================== */
+@media(max-width:1400px) {
+    .grid {
+        grid-template-columns: repeat(4, 1fr);
+        
+    }
+}
+
+@media(max-width:1100px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* =====================================================
+   TABLET
+===================================================== */
+@media(max-width:992px) {
+    .page-layout {
+        flex-direction: column;
+    }
+
+    .filter-toggle {
+        display: block;
+    }
+
+    .filter-box {
+        position: fixed;
+        top: 0;
+        left: -320px;
+        height: 100vh;
+        width: 320px;
+        border-radius: 0;
+        z-index: 3000;
+        transition: .35s ease;
+        overflow-y: auto;
+    }
+
+    .filter-box.active {
+        left: 0;
+    }
+
+    .grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 14px;
+                padding: 16px;
+            }
+
+            .card img {
+                width: 140px;
+                height: 140px;
+            }
+}
+
+/* =====================================================
+   MOBILE
+===================================================== */
+@media(max-width:576px) {
+    body {
+        padding-top: 105px;
+    }
+
+    .grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                padding: 12px;
+                margin-left:-2px;
+            }
+
+    .card img {
+        height: 125px;
+    }
+
+    .card img {
+                width: 125px;
+                height: 125px;
+            }
+
+    .price {
+                font-size: 16px;
+            }
+
+            .btn-cart {
+                font-size: 12px;
+                height: 34px;
+            }
+
+            .btn-love {
+                width: 36px;
+                height: 34px;
+            }
+}
+
+
+        /* ================= SEARCH ================= */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #ccc;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 22px;
+            border: 2px solid #000;
+            background: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ================= FILTER TOGGLE ================= */
+        .filter-toggle {
+            display: none;
+            margin-bottom: 14px;
+            position: sticky;
+            top: 80px;
+            z-index: 900;
+        }
+
+        .filter-toggle button {
+            width: 50%;
+            padding: 12px;
+            border-radius: 14px;
+            background: #000;
+            color: #fff;
+            border: none;
+            font-weight: 600;
+        }
+
+        /* ================= PAGE LAYOUT ================= */
+        .page-layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        /* ================= FILTER BOX ================= */
+        .filter-box {
+            width: 260px;
+            background: #fff;
+            padding: 18px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, .1);
+            flex-shrink: 0;
+        }
+
+        .filter-group {
+            margin-bottom: 18px
+        }
+
+        .filter-group b {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .filter-box label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .filter-box select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+
+        /* ================= PRODUCT GRID ================= */
+
+
+        /* ================= TABLET ================= */
+        @media(max-width:1024px) {
+
+            .page-layout {
+                flex-direction: column;
+            }
+
+            .filter-toggle {
+                display: block;
+            }
+
+            .filter-box {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                height: 100%;
+                width: 320px;
+                /* 🔑 HALF WIDTH */
+                border-radius: 0;
+                z-index: 3000;
+                transition: .35s ease;
+                overflow-y: auto;
+            }
+
+            .filter-box.active {
+                left: 0;
+            }
+        }
+
+        /* ================= MOBILE ================= */
+        @media(max-width:768px) {
+
+            .filter-toggle {
+                display: block;
+            }
+
+            .filter-box {
+                width: 85vw;
+                /* 🔑 MOBILE HALF-ISH WIDTH */
+                max-width: 320px;
+                left: -85vw;
+                z-index: 3000;
+            }
+
+            .filter-box.active {
+                left: 0;
+            }
+
+          
+        }

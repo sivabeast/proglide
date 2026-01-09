@@ -1,0 +1,94 @@
+
+/* FOOTER FIXED BOTTOM */
+.admin-footer {
+    width: 100%;
+    background: #0b0724;
+    color: white;
+    padding: 12px 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 9000;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+/* Fix page-wrapper height so footer does not overlap */
+.page-wrapper {
+    margin-left: 250px;
+    padding: 20px;
+    padding-bottom: 80px; /* space so content doesn't hide behind footer */
+}
+
+/* Sidebar improved look */
+.admin-sidebar {
+    width: 230px;
+    background: #0b0724;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 70px;
+    padding-top: 10px;
+    overflow-y: auto;
+}
+
+.admin-sidebar a {
+    display: block;
+    padding: 12px 20px;
+    color: #cfcfcf;
+    font-weight: 500;
+    border-left: 4px solid transparent;
+    transition: 0.3s;
+}
+
+.admin-sidebar a:hover {
+    background: #4a6fa5;
+    color: #fff;
+    border-left: 4px solid #ffffff;
+}
+
+.admin-sidebar .active {
+    background: #4a6fa5;
+    color: #fff;
+    border-left: 4px solid #ffffff;
+}
+
+/* Header improvement */
+.admin-header {
+    background: #0b0724;
+    color: white;
+    padding: 15px 20px;
+    font-size: 22px;
+    font-weight: bold;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 2000;
+    border-bottom: 2px solid #4a6fa5;
+}
+
+/* Card style improvement */
+.card {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.card h5 {
+    font-weight: 600;
+}
+
+.table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table-dark th {
+    background: #0b0724 !important;
+}
+
+.table td i {
+    font-size: 20px;
+    cursor: pointer;
+}
