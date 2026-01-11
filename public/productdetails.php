@@ -146,21 +146,41 @@ if ($user_id) {
                 <?php endif; ?>
 
                 <div class="d-flex align-items-center gap-2 mt-3">
-                    <button class="btn btn-outline-dark" onclick="changeQty(-1)">−</button>
-                    <span id="qty">1</span>
-                    <button class="btn btn-outline-dark" onclick="changeQty(1)">+</button>
-                </div>
+    <button class="btn btn-outline-dark" onclick="changeQty(-1)">−</button>
+    <span id="qty">1</span>
+    <button class="btn btn-outline-dark" onclick="changeQty(1)">+</button>
+</div>
 
-                <?php if (!$user_id): ?>
-                    <a href="login.php" class="btn btn-dark mt-3">Login to Add</a>
-                <?php else: ?>
-                    <button class="btn btn-dark mt-3" onclick="addToCart()">ADD TO CART</button>
-                <?php endif; ?>
+<?php if (!$user_id): ?>
 
-                <a href="ajax/<?= $in_wishlist ? 'remove' : 'add_to' ?>_wishlist.php?id=<?= $product_id ?>"
-                    class="btn btn-outline-danger ms-2 mt-3">
-                    <i class="fa-heart <?= $in_wishlist ? 'fa-solid' : 'fa-regular' ?>"></i>
-                </a>
+    <!-- LOGIN -->
+    <a href="login.php" class="btn btn-dark w-100 mt-3">
+        Login to Continue
+    </a>
+
+<?php else: ?>
+
+    <!-- ADD TO CART + WISHLIST (HALF + HALF) -->
+    <div class="d-flex gap-2 mt-3">
+
+        <button class="btn btn-dark flex-fill" onclick="addToCart()">
+            <i class="fa-solid fa-cart-plus me-1"></i> Add to Cart
+        </button>
+
+        <a href="ajax/<?= $in_wishlist ? 'remove' : 'add_to' ?>_wishlist.php?id=<?= $product_id ?>"
+           class="btn btn-outline-danger flex-fill text-center">
+            <i class="fa-heart <?= $in_wishlist ? 'fa-solid' : 'fa-regular' ?>"></i>
+        </a>
+
+    </div>
+
+    <!-- BUY NOW (FULL WIDTH) -->
+    <button class="btn btn-success w-100 mt-3" onclick="buyNow()">
+        <i class="fa-solid fa-bolt me-1"></i> Buy Now
+    </button>
+
+<?php endif; ?>
+
 
             </div>
         </div>
@@ -199,8 +219,26 @@ if ($user_id) {
                 location.href = "ajax/add_to_cart.php?id=" + selectedProduct + "&qty=" + qty;
             <?php endif; ?>
         }
+        
+        function buyNow() {
+            <?php if ($isBackCase): ?>
+                if (!modelSelect.value) {
+                    alert("Select model");
+                    return;
+                }
+                location.href =
+                    "checkout.php?buy_now=1"
+                    + "&id=" + selectedProduct
+                    + "&model_id=" + modelSelect.value
+                    + "&qty=" + qty;
+            <?php else: ?>
+                location.href =
+                    "checkout.php?buy_now=1"
+                    + "&id=" + selectedProduct
+                    + "&qty=" + qty;
+            <?php endif; ?>
+        }
     </script>
-
 </body>
 
 </html>

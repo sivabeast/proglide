@@ -207,6 +207,11 @@ ALTER TABLE orders ADD COLUMN payment_id VARCHAR(100) NULL;
 
 ALTER TABLE orders 
 ADD payment_proof VARCHAR(255) NULL;
+ALTER TABLE orders 
+ADD razorpay_order_id VARCHAR(100),
+ADD razorpay_payment_id VARCHAR(100),
+ADD razorpay_signature VARCHAR(255);
+
 
 
 /* ================================

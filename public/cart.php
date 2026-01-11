@@ -50,7 +50,7 @@ while ($row = $res->fetch_assoc()) {
 }
 
 /* DELIVERY RULE */
-$delivery = ($subtotal > 0 && $subtotal < 299) ? 60 : 0;
+$delivery = ($subtotal > 0 && $subtotal < 299) ? 0 : 0;
 $grand_total = $subtotal + $delivery;
 ?>
 <!DOCTYPE html>
@@ -411,7 +411,7 @@ $grand_total = $subtotal + $delivery;
 
                         <div class="d-flex justify-content-between">
                             <span>Delivery</span>
-                            <span><?= $delivery ? "₹$delivery" : "FREE" ?></span>
+                            <span><?= $delivery ? "₹free" : "FREE" ?></span>
                         </div>
 
                         <hr>
