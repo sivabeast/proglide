@@ -206,5 +206,6 @@ unset($_SESSION['order_id']);
     </div>
 
     <?php include "includes/footer.php"; ?>
+    <?php include "includes/mobile_bottom_nav.php"; ?>
 </body>
 </html>

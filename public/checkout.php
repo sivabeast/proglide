@@ -410,8 +410,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div id="desktopUpi" class="text-center d-none">
                                     <p class="fw-bold mb-2">Scan QR code to pay ₹<?= number_format($total, 2) ?></p>
                                     <img id="upiQR" class="upi-qr mb-2" alt="UPI QR Code" style="display: block; margin: 0 auto;">
+                                    <p class="fw-bold mb-2" style="font-size: 16px;">UPI ID: <span id="upiIdDesktop" onclick="openUpiApp('gpay', event)" style="color: #0d6efd; cursor: pointer; text-decoration: underline; user-select: none;" title="Click to open GPay with amount">sivabeast123123@okaxis</span></p>
                                     <p class="small text-muted mb-3">After payment, upload screenshot below</p>
-                                    <input type="file" name="payment_proof" id="paymentProof" class="form-control" accept="image/*" required>
+                                    <input type="file" name="payment_proof" id="paymentProof" class="form-control" accept="image/*">
                                     <small class="text-muted">Upload payment screenshot (Required)</small>
                                 </div>
 
@@ -423,6 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="text-center mb-3">
                                         <p class="small text-muted mb-2">Scan QR code with any UPI app</p>
                                         <img id="upiQRMobile" class="upi-qr mb-2" alt="UPI QR Code" style="display: block; margin: 0 auto;">
+                                        <p class="fw-bold mb-2" style="font-size: 16px;">UPI ID: <span id="upiIdMobile" onclick="openUpiApp('gpay', event)" style="color: #0d6efd; cursor: pointer; text-decoration: underline; user-select: none;" title="Click to open GPay with amount">sivabeast123123@okaxis</span></p>
                                     </div>
                                     
                                     <p class="small text-muted mb-3 text-center">Or choose your UPI app (Amount will be pre-filled)</p>
@@ -441,7 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </div>
                                     </div>
                                     <p class="small text-muted mt-3 mb-2 text-center">After payment, upload screenshot below</p>
-                                    <input type="file" name="payment_proof" id="paymentProofMobile" class="form-control" accept="image/*" required>
+                                    <input type="file" name="payment_proof" id="paymentProofMobile" class="form-control" accept="image/*">
                                     <small class="text-muted">Upload payment screenshot (Required)</small>
                                 </div>
 
@@ -501,6 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize button state
             updateOrderButton();
             
             // Handle screenshot upload
@@ -522,6 +525,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 });
             }
+            
+            // Form will submit naturally to PHP - no JavaScript validation needed
         });
         
         function selectPayment(method) {
@@ -579,6 +584,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 paymentConfirmed = true; // COD doesn't need confirmation
             }
             
+            // Always update button state after payment method change
             updateOrderButton();
         }
         
@@ -634,28 +640,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function updateOrderButton() {
             const orderBtn = document.getElementById('placeOrderBtn');
             
+            if (!orderBtn) return;
+            
+            // Always enable button - PHP will handle validation
+            orderBtn.disabled = false;
+            
+            // Update text as visual hint only (doesn't prevent submission)
             if (paymentMethod === 'cod') {
-                orderBtn.disabled = false;
                 orderBtn.textContent = 'Place Order';
             } else if (paymentMethod === 'upi') {
                 if (paymentConfirmed) {
-                    orderBtn.disabled = false;
                     orderBtn.textContent = 'Place Order';
                 } else {
-                    orderBtn.disabled = true;
-                    orderBtn.textContent = 'Upload screenshot to continue';
+                    orderBtn.textContent = 'Place Order (Upload screenshot required)';
                 }
             }
         }
-        
-        // Prevent form submission if payment not confirmed
-        document.getElementById('checkoutForm').addEventListener('submit', function(e) {
-            if (paymentMethod === 'upi' && !paymentConfirmed) {
-                e.preventDefault();
-                alert('Please upload payment screenshot first');
-                return false;
-            }
-        });
     </script>
 
     <?php include "includes/footer.php"; ?>

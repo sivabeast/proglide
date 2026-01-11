@@ -136,7 +136,7 @@ $current = basename($_SERVER['PHP_SELF']);
     </a>
 
     <?php if ($user_id): ?>
-        <a href="logout.php" class="<?= $current == 'profile.php' ? 'active' : '' ?>">
+        <a href="profile.php" class="<?= $current == 'profile.php' ? 'active' : '' ?>">
             <i class="fas fa-user"></i>
             Profile
         </a>

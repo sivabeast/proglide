@@ -415,7 +415,7 @@ ORDER BY o.id DESC
                                     </td>
                                     <td data-label="Proof">
                                         <?php if ($o['payment_proof']): ?>
-                                            <a href="/project/public/uploads/payments/<?= $o['payment_proof'] ?>" 
+                                            <a href="/proglide/public/uploads/payments/<?= $o['payment_proof'] ?>" 
                                                target="_blank" 
                                                class="proof-link">
                                                 <i class="bi bi-eye"></i>
