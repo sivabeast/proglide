@@ -206,56 +206,56 @@ $page = basename($_SERVER['PHP_SELF']);
     <ul>
 
         <li>
-            <a href="/project/admin/dashboard.php" class="<?= $page == 'dashboard.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/dashboard.php" class="<?= $page == 'dashboard.php' ? 'active' : '' ?>">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
         </li>
 
 
         <li>
-            <a href="/project/admin/products/add_protector.php" class="<?= $page == 'add_protector.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/products/add_protector.php" class="<?= $page == 'add_protector.php' ? 'active' : '' ?>">
                 <i class="bi bi-shield-check"></i> Protectors
             </a>
         </li>
 
         <li>
-            <a href="/project/admin/products/add_backcase_design.php"
+            <a href="/proglide/admin/products/add_backcase_design.php"
                 class="<?= $page == 'add_backcase_design.php' ? 'active' : '' ?>">
                 <i class="bi bi-phone"></i> Back Cases
             </a>
         </li>
 
         <li>
-            <a href="/project/admin/manage_brands_models.php"
+            <a href="/proglide/admin/manage_brands_models.php"
                 class="<?= $page == 'manage_brands_models.php' ? 'active' : '' ?>">
                 <i class="bi bi-building"></i> Brand & Models
             </a>
         </li>
         <li>
-            <a href="/project/admin/orders.php" class="<?= $page == 'orders.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/orders.php" class="<?= $page == 'orders.php' ? 'active' : '' ?>">
                 <i class="bi bi-bag-check"></i> payments
             </a>
         </li>
         <li>
-            <a href="/project/admin/orders/orders_list.php" class="<?= $page == 'orders_list.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/orders/orders_list.php" class="<?= $page == 'orders_list.php' ? 'active' : '' ?>">
                 <i class="bi bi-bag-check"></i> Orders
             </a>
         </li>
 
         <li>
-            <a href="/project/admin/users.php" class="<?= $page == 'users.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/users.php" class="<?= $page == 'users.php' ? 'active' : '' ?>">
                 <i class="bi bi-people"></i> Users
             </a>
         </li>
 
         <li>
-            <a href="/project/admin/profile.php" class="<?= $page == 'profile.php' ? 'active' : '' ?>">
+            <a href="/proglide/admin/profile.php" class="<?= $page == 'profile.php' ? 'active' : '' ?>">
                 <i class="bi bi-person"></i> Profile
             </a>
         </li>
 
         <li>
-            <a href="/project/admin/logout.php" class="logout">
+            <a href="/proglide/admin/logout.php" class="logout">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>
         </li>

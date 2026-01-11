@@ -162,7 +162,7 @@ body{
 
         <!-- LEFT : LOGO -->
         <a href="index.php" class="header-logo">
-            <img src="/project/image/logo.png" alt="protectors">
+            <img src="/proglide/image/logo.png" alt="protectors">
             <h4>PROTECT<span>ORS</span></h4>
         </a>
 
