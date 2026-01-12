@@ -69,13 +69,16 @@ body{
     display:flex;
     align-items:center;
     height:100%;
+    margin-top: 10px;
+    margin-left: -20px;
 }
 
 .header-logo img{
-    height:56px;
+    height:110px;
     width:auto;
     max-width:220px;
     object-fit:contain;
+    
 }
 
 /* =========================
