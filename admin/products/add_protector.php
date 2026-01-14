@@ -449,6 +449,7 @@ while ($row = $res->fetch_assoc()) {
                         <th>Type</th>
                         <th>MRP</th>
                         <th>Price</th>
+                        <th>popular</th>
                         <th>Action</th>
 
                     </tr>
@@ -463,15 +464,17 @@ while ($row = $res->fetch_assoc()) {
                                     <?= strtoupper($p['type_name']) ?>
                                 </span>
                             </td>
-
+                            
                             <td><s>₹<?= $p['original_price'] ?></s></td>
                             <td>₹<?= $p['price'] ?></td>
+                            <td><input type="checkbox" class="form-check-input popular-toggle" data-id="<?= $p['id'] ?>" <?= $p['is_popular'] ? 'checked' : '' ?>></td>
+
                             <td>
                                 <a href="product_edit.php?id=<?= $p['id'] ?>&from=protector"
                                     class="btn btn-sm btn-warning">Edit</a>
 
 
-                                <a href="?delete=<?= $p['id'] ?>" onclick="return confirm('Delete this protector?')"
+                                <a href="product_delete.php?id=<?= $p['id'] ?>" onclick="return confirm('Delete this protector?')"
                                     class="btn btn-sm btn-danger">
                                     Delete
                                 </a>
@@ -544,6 +547,33 @@ while ($row = $res->fetch_assoc()) {
         typeSelect.addEventListener("change", applyFilter);
         searchBox.addEventListener("keyup", applyFilter);
     </script>
+ 
+ <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.querySelectorAll('.popular-toggle').forEach(toggle => {
+
+        toggle.addEventListener('change', function () {
+
+            const productId = this.dataset.id;
+            const status = this.checked ? 1 : 0;
+
+            fetch('../ajax/toggle_popular.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + productId + '&status=' + status
+            })
+            .then(res => res.text())
+            .then(t => console.log('Server:', t));
+        });
+
+    });
+
+});
+</script>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

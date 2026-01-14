@@ -232,6 +232,11 @@ $page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
+            <a href="/proglide/admin/categories/categories.php" class="<?= $page == 'categories.php' ? 'active' : '' ?>">
+                <i class="bi bi-bag-check"></i> Categories
+            </a>
+        </li>
+        <li>
             <a href="/proglide/admin/orders.php" class="<?= $page == 'orders.php' ? 'active' : '' ?>">
                 <i class="bi bi-bag-check"></i> payments
             </a>

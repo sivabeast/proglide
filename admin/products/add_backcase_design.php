@@ -467,6 +467,7 @@ while ($r = $res->fetch_assoc()) {
                         <th>Type</th>
                         <th>MRP</th>
                         <th>Price</th>
+                        <th>popular</th>
                         <th>Action</th>
 
                     </tr>
@@ -480,12 +481,13 @@ while ($r = $res->fetch_assoc()) {
                             <td><span class="type-badge"><?= strtoupper($p['type_name']) ?></span></td>
                             <td><s>₹<?= $p['original_price'] ?></s></td>
                             <td>₹<?= $p['price'] ?></td>
+                            <td><input type="checkbox" class="form-check-input popular-toggle" data-id="<?= $p['id'] ?>" <?= $p['is_popular'] ? 'checked' : '' ?>></td>
                             <td>
                                 <a href="product_edit.php?id=<?= $p['id'] ?>&from=backcase"
                                     class="btn btn-sm btn-warning">Edit</a>
 
 
-                                <a href="?delete=<?= $p['id'] ?>" onclick="return confirm('Delete this protector?')"
+                                <a href="product_delete.php?id=<?= $p['id'] ?>" onclick="return confirm('Delete this back case?')"
                                     class="btn btn-sm btn-danger">
                                     Delete
                                 </a>
@@ -502,7 +504,7 @@ while ($r = $res->fetch_assoc()) {
         <div class="modal-dialog modal-lg">
             <div class="modal-content bg-dark text-white">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add New Protector</h5>
+                    <h5 class="modal-title">Add New Back Case</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -573,7 +575,21 @@ while ($r = $res->fetch_assoc()) {
         cat.onchange = filter;
         search.onkeyup = filter;
     </script>
-
+<script>
+    document.querySelectorAll('.popular-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function () {
+            const productId = this.dataset.id;
+            const status = this.checked ? 1 : 0;
+            fetch('../ajax/toggle_popular.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + productId + '&status=' + status
+            })
+        });
+    });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
