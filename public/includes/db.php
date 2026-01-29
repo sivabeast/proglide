@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = "";
-$db   = "fin";
+$db   = "proglide";
 
 $conn = new mysqli($host, $user, $pass, $db);
 

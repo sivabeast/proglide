@@ -1,55 +1,37 @@
 <?php
-/* ======================
-   SESSION START
-====================== */
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
+require "../includes/db.php";
 
-/* ======================
-   DB CONNECTION
-====================== */
-require __DIR__ . "/../includes/db.php";
+header('Content-Type: application/json');
 
-/* ======================
-   LOGIN CHECK
-====================== */
 if (!isset($_SESSION['user_id'])) {
-    header("Location: ../login.php");
+    echo json_encode(['success' => false, 'message' => 'Please login first']);
     exit;
 }
 
-/* ======================
-   PRODUCT ID CHECK
-====================== */
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: ../products.php");
+$user_id = $_SESSION['user_id'];
+$product_id = $_POST['product_id'] ?? 0;
+
+if (!$product_id) {
+    echo json_encode(['success' => false, 'message' => 'Invalid product']);
     exit;
 }
 
-$user_id    = (int) $_SESSION['user_id'];
-$product_id = (int) $_GET['id'];
-
-/* ======================
-   INSERT INTO WISHLIST
-   (Duplicate auto ignore)
-====================== */
-$stmt = $conn->prepare("
-    INSERT INTO wishlist (user_id, product_id)
-    VALUES (?, ?)
-    ON DUPLICATE KEY UPDATE product_id = product_id
-");
-
-if (!$stmt) {
-    die("SQL Prepare Error: " . $conn->error);
-}
-
-$stmt->bind_param("ii", $user_id, $product_id);
+// Check if product exists
+$stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND status = 1");
+$stmt->bind_param("i", $product_id);
 $stmt->execute();
+if (!$stmt->get_result()->num_rows) {
+    echo json_encode(['success' => false, 'message' => 'Product not found']);
+    exit;
+}
 
-/* ======================
-   REDIRECT BACK
-====================== */
-$redirect = $_SERVER['HTTP_REFERER'] ?? '../products.php';
-header("Location: $redirect");
-exit;
+// Add to wishlist
+$insert_stmt = $conn->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = user_id");
+$insert_stmt->bind_param("ii", $user_id, $product_id);
+$insert_stmt->execute();
+
+echo json_encode(['success' => true, 'message' => 'Added to wishlist']);
+
+$conn->close();
+?>

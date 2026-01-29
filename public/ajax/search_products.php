@@ -1,119 +1,123 @@
 <?php
+// ajax/search_products.php
 session_start();
 require "../includes/db.php";
 
-$user_id = $_SESSION['user_id'] ?? null;
+$search = $_GET['q'] ?? '';
 
-$q = trim($_GET['q'] ?? '');
-
-if ($q === '') {
-    exit; // JS will restore original products
+if (strlen($search) < 2) {
+    echo '<div class="no-products"><p>Please enter at least 2 characters</p></div>';
+    exit;
 }
 
-/* =========================
-   SEARCH QUERY
-========================= */
-$stmt = $conn->prepare("
-    SELECT 
-        p.*,
-        ct.type_name,
-        mc.name AS main_category
-    FROM products p
-    JOIN main_categories mc ON mc.id = p.main_category_id
-    LEFT JOIN category_types ct ON ct.id = p.category_type_id
-    WHERE (p.model_name LIKE ? OR p.design_name LIKE ?)
-    ORDER BY p.created_at DESC
-    LIMIT 20
-");
-
-$like = $q . "%";
-$stmt->bind_param("ss", $like, $like);
+$sql = "SELECT 
+            p.*, 
+            c.name as category_name,
+            c.id as category_id,
+            mt.name as material_name,
+            vt.name as variant_name
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN material_types mt ON p.material_type_id = mt.id
+        LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
+        WHERE p.status = 1 
+        AND (p.model_name LIKE ? OR p.design_name LIKE ? OR p.description LIKE ? 
+             OR c.name LIKE ? OR mt.name LIKE ? OR vt.name LIKE ?)
+        ORDER BY p.created_at DESC
+        LIMIT 20";
+        
+$searchTerm = "%" . $search . "%";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
 $stmt->execute();
-$res = $stmt->get_result();
+$result = $stmt->get_result();
 
-/* =========================
-   OUTPUT FULL PRODUCT CARDS
-========================= */
-while ($p = $res->fetch_assoc()):
-
-    $isBackCase = strtolower($p['main_category']) === 'back case';
-    $folder = $isBackCase ? 'backcases' : 'protectors';
-
-    $title = $isBackCase
-        ? ($p['design_name'] ?? 'Design')
-        : $p['model_name'];
-
-    /* ---------- WISHLIST CHECK ---------- */
-    $inWishlist = false;
-    if ($user_id) {
-        $w = $conn->prepare(
-            "SELECT id FROM wishlist WHERE user_id=? AND product_id=?"
-        );
-        $w->bind_param("ii", $user_id, $p['id']);
-        $w->execute();
-        $inWishlist = $w->get_result()->num_rows > 0;
+$html = '';
+if ($result->num_rows > 0) {
+    while ($product = $result->fetch_assoc()) {
+        $image = !empty($product['image1']) ? $product['image1'] : 'default.jpg';
+        $is_back_case = ($product['category_id'] == 2); // Assuming category_id 2 is Back Case
+        
+        // Determine product display name based on category
+        if ($product['category_id'] == 1) { // Protector
+            $display_name = $product['model_name'] ?? 'Protector';
+            $variant_info = $product['variant_name'] ? '(' . $product['variant_name'] . ')' : '';
+            $product_name = $display_name . ' ' . $variant_info;
+        } else if ($product['category_id'] == 2) { // Back Case
+            $display_name = $product['design_name'] ?? 'Back Case';
+            $product_name = $display_name;
+        } else {
+            $display_name = $product['model_name'] ?? $product['design_name'] ?? 'Product';
+            $product_name = $display_name;
+        }
+        
+        $html .= '<div class="product-card" data-product-id="' . $product['id'] . '">';
+        
+        // Product Image Container
+        $html .= '<div class="product-image-container">';
+        $html .= '<img src="../uploads/products/' . $image . '" alt="' . htmlspecialchars($product_name) . '" class="product-image" loading="lazy">';
+        
+        // Wishlist Icon (Heart)
+        $html .= '<button class="wishlist-btn" data-product-id="' . $product['id'] . '" aria-label="Add to wishlist">';
+        $html .= '<i class="far fa-heart"></i>';
+        $html .= '</button>';
+        
+        // Popular Badge
+        if ($product['is_popular']) {
+            $html .= '<span class="popular-badge"><i class="fas fa-fire"></i> Popular</span>';
+        }
+        
+        $html .= '</div>'; // Close product-image-container
+        
+        // Product Info
+        $html .= '<div class="product-info">';
+        
+        // Product Name with Variant
+        $html .= '<h4 class="product-title">' . htmlspecialchars($product_name) . '</h4>';
+        
+        // Material Type
+        if (!empty($product['material_name'])) {
+            $html .= '<p class="product-material"><i class="fas fa-gem"></i> ' . htmlspecialchars($product['material_name']) . '</p>';
+        }
+        
+        // Category and Variant
+        $html .= '<p class="product-category">';
+        $html .= '<i class="fas fa-tag"></i> ' . htmlspecialchars($product['category_name']);
+        if ($product['category_id'] == 1 && !empty($product['variant_name'])) {
+            $html .= ' • <i class="fas fa-palette"></i> ' . htmlspecialchars($product['variant_name']);
+        }
+        $html .= '</p>';
+        
+        // Price Section
+        $html .= '<div class="price-section">';
+        $html .= '<span class="current-price">₹' . number_format($product['price'], 2) . '</span>';
+        
+        if (!empty($product['original_price']) && $product['original_price'] > $product['price']) {
+            $html .= '<span class="original-price">₹' . number_format($product['original_price'], 2) . '</span>';
+            $discount = round((($product['original_price'] - $product['price']) / $product['original_price']) * 100);
+            $html .= '<span class="discount-badge">' . $discount . '% OFF</span>';
+        }
+        $html .= '</div>';
+        
+        // Action Button
+        if ($is_back_case) {
+            $html .= '<button class="action-btn select-model-btn" data-product-id="' . $product['id'] . '">';
+            $html .= '<i class="fas fa-mobile-alt"></i> Select Model';
+            $html .= '</button>';
+        } else {
+            $html .= '<button class="action-btn add-to-cart-btn" data-product-id="' . $product['id'] . '">';
+            $html .= '<i class="fas fa-shopping-cart"></i> ADD TO CART';
+            $html .= '</button>';
+        }
+        
+        $html .= '</div>'; // Close product-info
+        $html .= '</div>'; // Close product-card
     }
+} else {
+    $html = '<div class="no-products"><i class="fas fa-search"></i><h3>No products found</h3><p>Try different keywords</p></div>';
+}
 
-    /* ---------- CART CHECK (PROTECTOR ONLY) ---------- */
-    $inCart = false;
-    if ($user_id && !$isBackCase) {
-        $c = $conn->prepare(
-            "SELECT id FROM cart
-             WHERE user_id=? AND product_id=? AND phone_model_id IS NULL"
-        );
-        $c->bind_param("ii", $user_id, $p['id']);
-        $c->execute();
-        $inCart = $c->get_result()->num_rows > 0;
-    }
+echo $html;
+
+$conn->close();
 ?>
-<div class="card">
-
-    <a href="productdetails.php?id=<?= $p['id'] ?>">
-        <img src="../uploads/products/<?= $folder ?>/<?= htmlspecialchars($p['image']) ?>">
-        <div class="card-body">
-            <div class="title">
-                <?= htmlspecialchars($title) ?>
-            </div>
-
-            <?php if (!$isBackCase && !empty($p['type_name'])): ?>
-                <div class="ptype">( <?= ucfirst($p['type_name']) ?> )</div>
-            <?php endif; ?>
-
-            <div class="price">₹<?= number_format($p['price'], 2) ?></div>
-        </div>
-    </a>
-
-    <div class="card-actions">
-
-        <!-- ❤️ WISHLIST -->
-        <a class="wish-btn <?= $inWishlist ? 'active' : '' ?>"
-           href="ajax/<?= $inWishlist ? 'remove' : 'add' ?>_to_wishlist.php?id=<?= $p['id'] ?>">
-            <i class="fa-heart <?= $inWishlist ? 'fa-solid' : 'fa-regular' ?>"></i>
-        </a>
-
-        <!-- 🛒 CART / SELECT MODEL -->
-        <?php if ($isBackCase): ?>
-
-            <a href="productdetails.php?id=<?= $p['id'] ?>" class="btn">
-                Select Model
-            </a>
-
-        <?php else: ?>
-
-            <?php if (!$user_id): ?>
-                <a href="login.php" class="btn">Add to Cart</a>
-
-            <?php elseif ($inCart): ?>
-                <span class="btn added">ADDED</span>
-
-            <?php else: ?>
-                <a href="ajax/add_to_cart.php?id=<?= $p['id'] ?>" class="btn">
-                    Add to Cart
-                </a>
-            <?php endif; ?>
-
-        <?php endif; ?>
-
-    </div>
-</div>
-<?php endwhile; ?>

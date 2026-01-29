@@ -11,34 +11,24 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $success = "";
 $error = "";
 
-$protectorCategory = null;
-$protectorSlug = null;
-
-$catRes = $conn->query("
-    SELECT id, slug 
-    FROM categories 
-    WHERE slug = 'protectors'
-    LIMIT 1
-");
-
+// Get AirPods category ID
+$airpodsCategory = null;
+$catRes = $conn->query("SELECT id FROM categories WHERE slug = 'airpods' LIMIT 1");
 if ($catRes->num_rows > 0) {
-    $row = $catRes->fetch_assoc();
-    $protectorCategory = $row['id'];
-    $protectorSlug = $row['slug']; // 🔥 important
+    $airpodsCategory = $catRes->fetch_assoc()['id'];
 } else {
-    $error = "Protector category not found!";
+    $error = "AirPods category not found!";
 }
 
-
 /* ===========================
-   FETCH MATERIAL TYPES FOR PROTECTORS
+   FETCH AIRPODS MATERIAL TYPES
 =========================== */
 $materialTypes = [];
-if ($protectorCategory) {
+if ($airpodsCategory) {
     $res = $conn->query("
         SELECT id, name 
         FROM material_types 
-        WHERE category_id = $protectorCategory AND status = 1
+        WHERE category_id = $airpodsCategory AND status = 1
         ORDER BY name
     ");
     while ($r = $res->fetch_assoc()) {
@@ -47,14 +37,14 @@ if ($protectorCategory) {
 }
 
 /* ===========================
-   FETCH VARIANT TYPES FOR PROTECTORS
+   FETCH AIRPODS VARIANT TYPES
 =========================== */
 $variantTypes = [];
-if ($protectorCategory) {
+if ($airpodsCategory) {
     $res = $conn->query("
         SELECT id, name 
         FROM variant_types 
-        WHERE category_id = $protectorCategory AND status = 1
+        WHERE category_id = $airpodsCategory AND status = 1
         ORDER BY name
     ");
     while ($r = $res->fetch_assoc()) {
@@ -63,16 +53,16 @@ if ($protectorCategory) {
 }
 
 /* ===========================
-   ADD MATERIAL TYPE
+   ADD MATERIAL TYPE FOR AIRPODS
 =========================== */
 if (isset($_POST['add_material_type'])) {
     $name = trim($_POST['new_material_type']);
-    if ($name != "" && $protectorCategory) {
+    if ($name != "" && $airpodsCategory) {
         $stmt = $conn->prepare("
             INSERT INTO material_types (category_id, name)
             VALUES (?, ?)
         ");
-        $stmt->bind_param("is", $protectorCategory, $name);
+        $stmt->bind_param("is", $airpodsCategory, $name);
         $stmt->execute();
         $success = "Material type added!";
         header("Refresh:1");
@@ -81,16 +71,16 @@ if (isset($_POST['add_material_type'])) {
 }
 
 /* ===========================
-   ADD VARIANT TYPE
+   ADD VARIANT TYPE FOR AIRPODS
 =========================== */
 if (isset($_POST['add_variant_type'])) {
     $name = trim($_POST['new_variant_type']);
-    if ($name != "" && $protectorCategory) {
+    if ($name != "" && $airpodsCategory) {
         $stmt = $conn->prepare("
             INSERT INTO variant_types (category_id, name)
             VALUES (?, ?)
         ");
-        $stmt->bind_param("is", $protectorCategory, $name);
+        $stmt->bind_param("is", $airpodsCategory, $name);
         $stmt->execute();
         $success = "Variant type added!";
         header("Refresh:1");
@@ -99,9 +89,9 @@ if (isset($_POST['add_variant_type'])) {
 }
 
 /* ===========================
-   ADD PROTECTOR
+   ADD AIRPODS
 =========================== */
-if (isset($_POST['add_protector'])) {
+if (isset($_POST['add_airpods'])) {
     $model = trim($_POST['model_name']);
     $material_type_id = $_POST['material_type'];
     $variant_type_id = $_POST['variant_type'];
@@ -112,15 +102,12 @@ if (isset($_POST['add_protector'])) {
 
     if ($model == "" || $price == "" || empty($_FILES['image1']['name'])) {
         $error = "Please fill all required fields (Model Name, Price, and Main Image)";
-    } elseif (!$protectorCategory) {
-        $error = "Protector category not found!";
+    } elseif (!$airpodsCategory) {
+        $error = "AirPods category not found!";
     } else {
-        $folder = "../../uploads/products/" . $protectorSlug . "/";
-
-if (!is_dir($folder)) {
-    mkdir($folder, 0777, true);
-}
-
+        $folder = "../../uploads/products/airpods/";
+        if (!is_dir($folder))
+            mkdir($folder, 0777, true);
 
         // Handle image uploads
         $image1 = "";
@@ -150,7 +137,7 @@ if (!is_dir($folder)) {
         ");
         $stmt->bind_param(
             "iiisdsssssi",
-            $protectorCategory,
+            $airpodsCategory,
             $material_type_id,
             $variant_type_id,
             $model,
@@ -164,19 +151,19 @@ if (!is_dir($folder)) {
         );
         
         if ($stmt->execute()) {
-            $success = "Protector added successfully!";
+            $success = "AirPods added successfully!";
         } else {
-            $error = "Error adding protector: " . $conn->error;
+            $error = "Error adding AirPods: " . $conn->error;
         }
         $stmt->close();
     }
 }
 
 /* ===========================
-   FETCH PROTECTORS
+   FETCH AIRPODS PRODUCTS
 =========================== */
 $products = [];
-if ($protectorCategory) {
+if ($airpodsCategory) {
     $res = $conn->query("
         SELECT p.*, 
                mt.name as material_name,
@@ -186,7 +173,7 @@ if ($protectorCategory) {
         LEFT JOIN material_types mt ON p.material_type_id = mt.id
         LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
         JOIN categories c ON p.category_id = c.id
-        WHERE p.category_id = $protectorCategory
+        WHERE p.category_id = $airpodsCategory
         ORDER BY p.created_at DESC
     ");
     while ($row = $res->fetch_assoc()) {
@@ -199,13 +186,13 @@ if ($protectorCategory) {
 <html>
 
 <head>
-    <title>Protector Manager</title>
+    <title>AirPods Manager</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
         /* =========================================================
-   ADMIN PRODUCT MANAGER – FULL CSS (FIXED)
+   ADMIN AIRPODS MANAGER – FULL CSS
 ========================================================= */
         :root {
             --bg: #020617;
@@ -428,7 +415,7 @@ if ($protectorCategory) {
         }
 
         /* ===============================
-   MOBILE CARD VIEW (FIXED)
+   MOBILE CARD VIEW
 ================================ */
         @media(max-width:576px) {
             .table thead {
@@ -556,7 +543,7 @@ if ($protectorCategory) {
 
     <div class="container py-4">
 
-        <h3>Protector Manager</h3>
+        <h3>AirPods Manager</h3>
 
         <?php if ($success): ?>
             <div class="alert alert-success"><?= $success ?></div>
@@ -569,13 +556,13 @@ if ($protectorCategory) {
         <div class="row mb-3">
             <div class="col-md-6">
                 <form method="post" class="d-flex gap-2">
-                    <input type="text" name="new_material_type" class="form-control" placeholder="New Material Type (e.g., 11H Glass)" required>
+                    <input type="text" name="new_material_type" class="form-control" placeholder="New Material Type (e.g., Silicon, Plastic, Leather)" required>
                     <button name="add_material_type" class="btn btn-success">Add Material</button>
                 </form>
             </div>
             <div class="col-md-6">
                 <form method="post" class="d-flex gap-2">
-                    <input type="text" name="new_variant_type" class="form-control" placeholder="New Variant Type (e.g., Anti-Glare)" required>
+                    <input type="text" name="new_variant_type" class="form-control" placeholder="New Variant Type (e.g., Pro 2, 3rd Gen, Case Cover)" required>
                     <button name="add_variant_type" class="btn btn-warning">Add Variant</button>
                 </form>
             </div>
@@ -598,7 +585,7 @@ if ($protectorCategory) {
             </select>
 
             <input type="text" id="searchBox" class="form-control w-25" placeholder="Search model">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ Add Protector</button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">+ Add AirPods</button>
         </div>
 
         <!-- PRODUCT TABLE -->
@@ -619,14 +606,11 @@ if ($protectorCategory) {
                     <tbody id="productTable">
                         <?php if (empty($products)): ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted">No protectors found. Add your first protector.</td>
+                                <td colspan="7" class="text-center text-muted">No AirPods found. Add your first AirPods product.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($products as $p): 
-                                $imageSrc = !empty($p['image1'])
-                                ? "../../uploads/products/" . $protectorSlug . "/" . $p['image1']
-                                : "https://via.placeholder.com/55x55?text=No+Image";
-                            
+                                $imageSrc = !empty($p['image1']) ? "../../uploads/products/airpods/" . $p['image1'] : 'https://via.placeholder.com/55x55?text=No+Image';
                             ?>
                                 <tr data-material="<?= $p['material_name'] ?>" data-variant="<?= $p['variant_name'] ?>">
                                     <td>
@@ -655,10 +639,10 @@ if ($protectorCategory) {
                                                <?= $p['is_popular'] ? 'checked' : '' ?>>
                                     </td>
                                     <td>
-                                        <a href="product_edit.php?id=<?= $p['id'] ?>&from=protector"
+                                        <a href="product_edit.php?id=<?= $p['id'] ?>&from=airpods"
                                             class="btn btn-sm btn-warning">Edit</a>
                                         <a href="product_delete.php?id=<?= $p['id'] ?>" 
-                                           onclick="return confirm('Delete this protector?')"
+                                           onclick="return confirm('Delete this AirPods product?')"
                                            class="btn btn-sm btn-danger">
                                             Delete
                                         </a>
@@ -677,14 +661,14 @@ if ($protectorCategory) {
         <div class="modal-dialog modal-lg">
             <div class="modal-content bg-dark text-white">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add New Protector</h5>
+                    <h5 class="modal-title">Add New AirPods Product</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="post" enctype="multipart/form-data" id="protectorForm">
+                <form method="post" enctype="multipart/form-data" id="airpodsForm">
                     <div class="modal-body">
-                        <?php if (!$protectorCategory): ?>
+                        <?php if (!$airpodsCategory): ?>
                             <div class="alert alert-danger">
-                                Protector category not found! Please check your database.
+                                AirPods category not found! Please check your database.
                             </div>
                         <?php elseif (empty($materialTypes) || empty($variantTypes)): ?>
                             <div class="alert alert-warning">
@@ -694,9 +678,9 @@ if ($protectorCategory) {
                             <div class="form-section">
                                 <h6>Basic Information</h6>
                                 <div class="mb-3">
-                                    <label class="form-label">Model Name *</label>
+                                    <label class="form-label">Product Name *</label>
                                     <input type="text" name="model_name" class="form-control" 
-                                           placeholder="e.g., iPhone 15 Screen Protector" required>
+                                           placeholder="e.g., AirPods Pro 2 Case, AirPods 3rd Gen Cover" required>
                                 </div>
                                 
                                 <div class="row mb-3">
@@ -741,7 +725,7 @@ if ($protectorCategory) {
                                 <h6>Description</h6>
                                 <div class="mb-3">
                                     <textarea name="description" class="form-control" 
-                                              placeholder="Description of the protector" 
+                                              placeholder="Description of the AirPods product (features, compatibility, etc.)" 
                                               rows="3"></textarea>
                                 </div>
                             </div>
@@ -789,9 +773,9 @@ if ($protectorCategory) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button name="add_protector" class="btn btn-primary" 
-                                <?= (!$protectorCategory || empty($materialTypes) || empty($variantTypes)) ? 'disabled' : '' ?>>
-                            Save Protector
+                        <button name="add_airpods" class="btn btn-primary" 
+                                <?= (!$airpodsCategory || empty($materialTypes) || empty($variantTypes)) ? 'disabled' : '' ?>>
+                            Save AirPods Product
                         </button>
                     </div>
                 </form>
@@ -903,7 +887,7 @@ if ($protectorCategory) {
 
         // Reset form after modal is closed
         document.getElementById('addModal').addEventListener('hidden.bs.modal', function () {
-            document.getElementById('protectorForm').reset();
+            document.getElementById('airpodsForm').reset();
             // Clear previews
             ['preview1', 'preview2', 'preview3'].forEach(id => {
                 const preview = document.getElementById(id);

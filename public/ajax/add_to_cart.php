@@ -2,79 +2,88 @@
 session_start();
 require "../includes/db.php";
 
-$user_id = $_SESSION['user_id'] ?? null;
-$session = session_id();
+header('Content-Type: application/json');
 
-$product_id = (int)($_GET['id'] ?? 0);
-$qty        = max(1, (int)($_GET['qty'] ?? 1));
-$model_id   = isset($_GET['model_id']) ? (int)$_GET['model_id'] : null;
-
-if (!$product_id) {
-    header("Location: ../products.php");
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['success' => false, 'message' => 'Please login first']);
     exit;
 }
 
-/* =========================
-   CHECK EXISTING CART ITEM
-   (PRODUCT + MODEL BASED)
-========================= */
-if ($user_id) {
-    $check = $conn->prepare("
-        SELECT id, quantity
-        FROM cart
-        WHERE user_id = ?
-          AND product_id = ?
-          AND (phone_model_id <=> ?)
-    ");
-    $check->bind_param("iii", $user_id, $product_id, $model_id);
-} else {
-    $check = $conn->prepare("
-        SELECT id, quantity
-        FROM cart
-        WHERE session_id = ?
-          AND product_id = ?
-          AND (phone_model_id <=> ?)
-    ");
-    $check->bind_param("sii", $session, $product_id, $model_id);
+$user_id = $_SESSION['user_id'];
+$product_id = $_POST['product_id'] ?? 0;
+$quantity = $_POST['quantity'] ?? 1;
+$phone_model_id = $_POST['phone_model_id'] ?? null;
+
+if (!$product_id) {
+    echo json_encode(['success' => false, 'message' => 'Invalid product']);
+    exit;
 }
 
-$check->execute();
-$res = $check->get_result();
+// Check if product exists and is active
+$stmt = $conn->prepare("SELECT id, price, category_id FROM products WHERE id = ? AND status = 1");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
 
-/* =========================
-   UPDATE OR INSERT
-========================= */
-if ($row = $res->fetch_assoc()) {
-
-    // SAME DESIGN + SAME MODEL → increase qty
-    $newQty = $row['quantity'] + $qty;
-
-    $up = $conn->prepare("UPDATE cart SET quantity=? WHERE id=?");
-    $up->bind_param("ii", $newQty, $row['id']);
-    $up->execute();
-
-} else {
-
-    // NEW MODEL → NEW ROW
-    if ($user_id) {
-        $ins = $conn->prepare("
-            INSERT INTO cart (user_id, product_id, phone_model_id, quantity)
-            VALUES (?,?,?,?)
-        ");
-        $ins->bind_param("iiii", $user_id, $product_id, $model_id, $qty);
-    } else {
-        $ins = $conn->prepare("
-            INSERT INTO cart (session_id, product_id, phone_model_id, quantity)
-            VALUES (?,?,?,?)
-        ");
-        $ins->bind_param("siii", $session, $product_id, $model_id, $qty);
-    }
-
-    $ins->execute();
+if (!$product) {
+    echo json_encode(['success' => false, 'message' => 'Product not available']);
+    exit;
 }
 
-/* =========================
-   RETURN BACK
-========================= */
-header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../products.php'));
-exit;
+// For back cases, check if model is selected
+if ($product['category_id'] == 2 && !$phone_model_id) { // Back Case requires model
+    echo json_encode(['success' => false, 'message' => 'Please select phone model for back case']);
+    exit;
+}
+
+// Set phone_model_id to NULL for non-back case products
+if ($product['category_id'] != 2) {
+    $phone_model_id = null;
+}
+
+// Check if product already in cart
+$check_sql = "SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?";
+$check_params = [$user_id, $product_id];
+$check_types = "ii";
+
+if ($phone_model_id !== null) {
+    $check_sql .= " AND phone_model_id = ?";
+    $check_params[] = $phone_model_id;
+    $check_types .= "i";
+} else {
+    $check_sql .= " AND phone_model_id IS NULL";
+}
+
+$check_stmt = $conn->prepare($check_sql);
+$check_stmt->bind_param($check_types, ...$check_params);
+$check_stmt->execute();
+$existing = $check_stmt->get_result()->fetch_assoc();
+
+if ($existing) {
+    // Update quantity
+    $new_qty = $existing['quantity'] + $quantity;
+    $update_stmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
+    $update_stmt->bind_param("ii", $new_qty, $existing['id']);
+    $update_stmt->execute();
+} else {
+    // Insert new
+    $insert_stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, phone_model_id, quantity) VALUES (?, ?, ?, ?)");
+    $insert_stmt->bind_param("iiii", $user_id, $product_id, $phone_model_id, $quantity);
+    $insert_stmt->execute();
+}
+
+// Get updated cart count
+$count_stmt = $conn->prepare("SELECT SUM(quantity) as total FROM cart WHERE user_id = ?");
+$count_stmt->bind_param("i", $user_id);
+$count_stmt->execute();
+$count_result = $count_stmt->get_result()->fetch_assoc();
+$cart_count = $count_result['total'] ?? 0;
+
+echo json_encode([
+    'success' => true,
+    'message' => 'Product added to cart',
+    'cart_count' => $cart_count
+]);
+
+$conn->close();
+?>

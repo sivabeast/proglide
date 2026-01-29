@@ -4,9 +4,10 @@ require "includes/db.php";
 
 // Get user name if logged in
 $user_name = '';
-if (isset($_SESSION['user_id'])) {
+$user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+if ($user_id) {
     $stmt = $conn->prepare("SELECT name FROM users WHERE id = ?");
-    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     if ($result->num_rows > 0) {
@@ -19,15 +20,9 @@ if (isset($_SESSION['user_id'])) {
    HOME CATEGORIES WITH PRODUCT COUNT
 ========================= */
 $categories = $conn->query("
-    SELECT c.id, c.name, c.slug, c.image,
-           COUNT(DISTINCT p.id) as product_count
+    SELECT c.id, c.name, c.slug, c.image
     FROM categories c
-    LEFT JOIN products p ON (
-        (c.name = 'Protector' AND p.main_category_id = 1) OR
-        (c.name = 'Back Case' AND p.main_category_id = 2)
-    ) AND p.status = 1
     WHERE c.status = 1
-    GROUP BY c.id, c.name, c.slug, c.image
     ORDER BY c.id ASC
 ");
 
@@ -35,38 +30,56 @@ $categories = $conn->query("
    POPULAR PRODUCTS WITH DETAILS
 ========================= */
 $popular = $conn->query("
-    SELECT p.id, p.model_name, p.design_name, p.price, p.image, p.main_category_id,
-           ct.type_name, mc.name as main_category_name
+    SELECT p.id, 
+           CASE 
+               WHEN p.category_id = 1 THEN p.model_name 
+               ELSE p.design_name 
+           END as product_name,
+           p.price, 
+           p.image1 as image,
+           c.name as category_name,
+           c.slug as category_slug,
+           mt.name as material_name,
+           vt.name as variant_name
     FROM products p
-    JOIN main_categories mc ON p.main_category_id = mc.id
-    JOIN category_types ct ON p.category_type_id = ct.id
+    JOIN categories c ON p.category_id = c.id
+    LEFT JOIN material_types mt ON p.material_type_id = mt.id
+    LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
     WHERE p.status = 1 AND p.is_popular = 1
-    ORDER BY p.id DESC
-    LIMIT 16
+    ORDER BY p.created_at DESC
+    LIMIT 12
 ");
 
 /* =========================
    FEATURED CATEGORY PRODUCTS
 ========================= */
 $categoryProducts = [];
-$catRes = $conn->query("SELECT id, name, slug FROM categories WHERE status = 1");
+$catRes = $conn->query("SELECT id, name, slug FROM categories WHERE status = 1 AND show_on_home = 1 LIMIT 2");
 
 while ($cat = $catRes->fetch_assoc()) {
+    $cat_id = $cat['id'];
     $cat_name = $cat['name'];
     $cat_slug = $cat['slug'];
     
-    // Determine main_category_id based on category name
-    $mainCategoryId = (stripos($cat_name, 'case') !== false) ? 2 : 1;
-    
     $pRes = $conn->query("
-        SELECT p.id, p.model_name, p.design_name, p.price, p.image, p.main_category_id,
-               ct.type_name, mc.name as main_category_name
+        SELECT p.id, 
+               CASE 
+                   WHEN p.category_id = 1 THEN p.model_name 
+                   ELSE p.design_name 
+               END as product_name,
+               p.price, 
+               p.image1 as image,
+               c.name as category_name,
+               c.slug as category_slug,
+               mt.name as material_name,
+               vt.name as variant_name
         FROM products p
-        JOIN main_categories mc ON p.main_category_id = mc.id
-        JOIN category_types ct ON p.category_type_id = ct.id
-        WHERE p.status = 1 AND p.main_category_id = $mainCategoryId
-        ORDER BY p.id DESC
-        LIMIT 10
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN material_types mt ON p.material_type_id = mt.id
+        LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
+        WHERE p.status = 1 AND p.category_id = $cat_id
+        ORDER BY p.is_popular DESC, p.created_at DESC
+        LIMIT 8
     ");
     
     if ($pRes->num_rows > 0) {
@@ -100,6 +113,24 @@ if ($cat_count) {
 $popular_count = $conn->query("SELECT COUNT(*) as total FROM products WHERE status = 1 AND is_popular = 1");
 if ($popular_count) {
     $stats['popular_count'] = $popular_count->fetch_assoc()['total'];
+}
+
+// Get user's wishlist and cart items for highlighting
+$user_wishlist = [];
+$user_cart = [];
+
+if ($user_id) {
+    // Get wishlist items
+    $wishlist_res = $conn->query("SELECT product_id FROM wishlist WHERE user_id = $user_id");
+    while ($row = $wishlist_res->fetch_assoc()) {
+        $user_wishlist[] = $row['product_id'];
+    }
+    
+    // Get cart items
+    $cart_res = $conn->query("SELECT product_id FROM cart WHERE user_id = $user_id");
+    while ($row = $cart_res->fetch_assoc()) {
+        $user_cart[] = $row['product_id'];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -153,7 +184,7 @@ body {
 .hero-section {
     background: linear-gradient(135deg, var(--primary) 0%, #1a1a1a 100%);
     color: white;
-    padding: 80px 0;
+    padding: 60px 0;
     position: relative;
     overflow: hidden;
     margin-bottom: 2rem;
@@ -177,7 +208,7 @@ body {
 
 .hero-title {
     font-family: 'Montserrat', sans-serif;
-    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-size: clamp(2rem, 5vw, 2.8rem);
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 1rem;
@@ -189,21 +220,21 @@ body {
 }
 
 .hero-subtitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     opacity: 0.9;
-    margin-bottom: 2rem;
-    max-width: 600px;
+    margin-bottom: 1.5rem;
+    max-width: 500px;
 }
 
 .welcome-text {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: rgba(255,255,255,0.1);
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: 50px;
-    margin-bottom: 1.5rem;
-    font-size: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
 }
 
 .welcome-text i {
@@ -212,8 +243,8 @@ body {
 
 .hero-stats {
     display: flex;
-    gap: 2rem;
-    margin-top: 3rem;
+    gap: 1.5rem;
+    margin-top: 2rem;
     flex-wrap: wrap;
 }
 
@@ -222,7 +253,7 @@ body {
 }
 
 .stat-number {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--secondary);
     display: block;
@@ -230,32 +261,32 @@ body {
 }
 
 .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     opacity: 0.8;
-    margin-top: 5px;
+    margin-top: 4px;
 }
 
 /* ====================
-   CATEGORIES
+   CATEGORIES (SMALLER)
 ==================== */
 .categories-section {
-    padding: 3rem 0;
+    padding: 2rem 0;
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .section-title {
     font-family: 'Montserrat', sans-serif;
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary);
     position: relative;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
 }
 
 .section-title::after {
@@ -263,7 +294,7 @@ body {
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 50px;
+    width: 40px;
     height: 3px;
     background: var(--secondary);
 }
@@ -274,27 +305,28 @@ body {
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 .view-all:hover {
-    gap: 12px;
+    gap: 10px;
     color: #007a29;
 }
 
 .categories-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
 }
 
 @media (max-width: 768px) {
     .categories-grid {
         display: flex;
         overflow-x: auto;
-        gap: 1rem;
-        padding-bottom: 1rem;
+        gap: 0.8rem;
+        padding-bottom: 0.8rem;
         scroll-snap-type: x mandatory;
     }
 }
@@ -302,118 +334,125 @@ body {
 .category-card {
     background: white;
     border-radius: var(--radius);
-    padding: 1.5rem 1rem;
+    padding: 1rem;
     text-align: center;
     text-decoration: none;
     color: var(--dark);
     transition: all 0.3s ease;
     box-shadow: var(--shadow);
-    border: 2px solid transparent;
+    border: 1px solid #eee;
     scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .category-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
     border-color: var(--secondary);
 }
 
 .category-img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin: 0 auto 1rem;
-    background: var(--light);
+    width: 70px;
+    height: 70px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
+    border: 1px solid #f0f0f0;
 }
 
 .category-img img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.category-card:hover .category-img img {
+    transform: scale(1.05);
 }
 
 .category-img .placeholder {
-    color: var(--gray);
-    font-size: 2rem;
+    color: var(--primary);
+    font-size: 1.8rem;
+    opacity: 0.7;
 }
 
 .category-name {
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
-}
-
-.category-count {
     font-size: 0.85rem;
-    color: var(--gray);
-    background: var(--light);
-    padding: 3px 10px;
-    border-radius: 20px;
-    display: inline-block;
+    color: var(--primary);
+    text-align: center;
+    line-height: 1.3;
 }
 
 /* ====================
-   PRODUCTS
+   PRODUCTS (SMALLER)
 ==================== */
 .products-section {
-    padding: 3rem 0;
+    padding: 2rem 0;
     background: white;
 }
 
 .products-grid {
-    display: flex;
-    overflow-x: auto;
-    gap: 1.2rem;
-    padding-bottom: 1rem;
-    scroll-snap-type: x mandatory;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
 }
 
-@media (min-width: 992px) {
+@media (max-width: 768px) {
     .products-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        overflow-x: visible;
+        display: flex;
+        overflow-x: auto;
+        gap: 0.8rem;
+        padding-bottom: 0.8rem;
+        scroll-snap-type: x mandatory;
     }
 }
 
 .product-card {
-    min-width: 220px;
     background: white;
     border-radius: var(--radius);
     overflow: hidden;
     transition: all 0.3s ease;
     box-shadow: var(--shadow);
-    scroll-snap-align: start;
-    position: relative;
     border: 1px solid #eee;
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .product-card {
+        min-width: 160px;
+        scroll-snap-align: start;
+    }
 }
 
 .product-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
 }
 
 .product-badge {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 8px;
+    left: 8px;
     background: var(--danger);
     color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
     font-weight: 600;
     z-index: 2;
 }
 
 .product-image {
     width: 100%;
-    height: 180px;
+    height: 140px;
     object-fit: cover;
     background: var(--light);
     transition: transform 0.3s ease;
@@ -424,68 +463,74 @@ body {
 }
 
 .product-info {
-    padding: 1.2rem;
+    padding: 0.8rem;
 }
 
 .product-category {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     font-weight: 600;
 }
 
 .product-name {
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
-    line-height: 1.4;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    min-height: 2.8rem;
+    min-height: 2.2rem;
 }
 
-.product-type {
-    font-size: 0.85rem;
+.product-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 0.6rem;
+}
+
+.product-material, .product-variant {
+    font-size: 0.75rem;
     color: var(--gray);
-    margin-bottom: 0.8rem;
     text-transform: capitalize;
 }
 
 .product-price {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--accent);
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
 }
 
 .product-actions {
     display: flex;
-    gap: 0.8rem;
+    gap: 0.6rem;
 }
 
 .action-btn {
     flex: 1;
-    padding: 8px;
-    border-radius: 8px;
+    padding: 6px;
+    border-radius: 6px;
     border: none;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     transition: all 0.3s ease;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .action-btn.wishlist {
     background: var(--light);
     color: var(--dark);
-    width: 40px;
+    width: 32px;
     flex: none;
 }
 
@@ -515,19 +560,19 @@ body {
    FEATURES
 ==================== */
 .features-section {
-    padding: 4rem 0;
+    padding: 3rem 0;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
 .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
 }
 
 .feature-card {
     background: white;
-    padding: 2rem;
+    padding: 1.5rem;
     border-radius: var(--radius);
     text-align: center;
     box-shadow: var(--shadow);
@@ -535,34 +580,142 @@ body {
 }
 
 .feature-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
 }
 
 .feature-icon {
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
     background: linear-gradient(135deg, var(--secondary), #ffdd44);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 1.5rem;
-    font-size: 1.8rem;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
     color: var(--primary);
 }
 
 .feature-title {
     font-family: 'Montserrat', sans-serif;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     color: var(--primary);
 }
 
 .feature-text {
     color: var(--gray);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* ====================
+   LOGIN MODAL
+==================== */
+.login-modal .modal-content {
+    border-radius: var(--radius);
+    border: none;
+    overflow: hidden;
+}
+
+.login-modal .modal-header {
+    background: var(--primary);
+    color: white;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.login-modal .modal-body {
+    padding: 1.5rem;
+}
+
+.login-modal .modal-footer {
+    border-top: none;
+    background: #f8f9fa;
+    padding: 1rem 1.5rem;
+}
+
+.login-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--secondary), #ffdd44);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.login-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    color: var(--primary);
+}
+
+.login-text {
+    color: var(--gray);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.login-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.btn-login {
+    background: var(--accent);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-login:hover {
+    background: #007a29;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.btn-register {
+    background: var(--primary);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-register:hover {
+    background: #333;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 /* ====================
@@ -570,50 +723,59 @@ body {
 ==================== */
 @media (max-width: 768px) {
     .hero-section {
-        padding: 50px 0;
+        padding: 40px 0;
     }
     
     .hero-title {
-        font-size: 2rem;
+        font-size: 1.6rem;
     }
     
     .hero-stats {
-        gap: 1.5rem;
-    }
-    
-    .stat-number {
-        font-size: 1.5rem;
-    }
-    
-    .section-title {
-        font-size: 1.5rem;
-    }
-    
-    .products-grid {
         gap: 1rem;
     }
     
-    .product-card {
-        min-width: 200px;
+    .stat-number {
+        font-size: 1.2rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+    }
+    
+    .categories-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .login-modal .modal-body {
+        padding: 1.2rem;
     }
 }
 
 @media (max-width: 480px) {
     .hero-section {
-        padding: 40px 0;
+        padding: 30px 0;
     }
     
     .hero-title {
-        font-size: 1.8rem;
+        font-size: 1.4rem;
     }
     
     .hero-stats {
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.8rem;
     }
     
     .categories-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .login-buttons {
+        gap: 0.6rem;
+    }
+    
+    .btn-login, .btn-register {
+        padding: 8px;
+        font-size: 0.8rem;
     }
 }
 
@@ -623,15 +785,16 @@ body {
 .btn-primary-custom {
     background: var(--secondary);
     color: var(--primary);
-    padding: 12px 28px;
+    padding: 10px 20px;
     border-radius: 50px;
     font-weight: 600;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: all 0.3s ease;
     border: none;
+    font-size: 0.9rem;
 }
 
 .btn-primary-custom:hover {
@@ -644,15 +807,16 @@ body {
 .btn-outline-custom {
     background: transparent;
     color: white;
-    padding: 12px 28px;
+    padding: 10px 20px;
     border-radius: 50px;
     font-weight: 600;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: all 0.3s ease;
     border: 2px solid rgba(255,255,255,0.3);
+    font-size: 0.9rem;
 }
 
 .btn-outline-custom:hover {
@@ -670,22 +834,37 @@ body {
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
 }
 
 ::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb {
     background: #888;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 2px solid rgba(0,0,0,0.1);
+    border-left-color: var(--accent);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 </style>
 </head>
@@ -718,7 +897,7 @@ body {
                             and stylish back cases. Military-grade protection with premium style.
                         </p>
                         
-                        <div class="d-flex gap-3 flex-wrap">
+                        <div class="d-flex gap-2 flex-wrap">
                             <a href="#products" class="btn-primary-custom">
                                 <i class="fas fa-shopping-bag"></i> Shop Now
                             </a>
@@ -748,7 +927,7 @@ body {
                     <div class="position-relative">
                         <div class="position-absolute top-0 start-0 w-100 h-100 bg-warning rounded-4" style="opacity: 0.1; transform: rotate(5deg);"></div>
                         <div class="position-relative">
-                            <img src="https://images.unsplash.com/photo-1546054451-aa724f6d7a54?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                            <img src="/proglide/image/logo.png" 
                                  alt="Premium Phone Accessories" 
                                  class="img-fluid rounded-4 shadow-lg">
                         </div>
@@ -759,7 +938,7 @@ body {
     </section>
 
     <!-- ====================
-         CATEGORIES
+         CATEGORIES (SMALLER)
     ==================== -->
     <section id="categories" class="categories-section">
         <div class="container">
@@ -773,26 +952,33 @@ body {
             <?php if ($categories && $categories->num_rows > 0): ?>
                 <div class="categories-grid">
                     <?php while($c = $categories->fetch_assoc()): ?>
-                        <a href="subcategories.php?cat=<?= $c['slug'] ?>" class="category-card">
+                        <a href="products.php?category=<?= $c['slug'] ?>" class="category-card">
                             <div class="category-img">
                                 <?php if (!empty($c['image'])): ?>
                                     <img src="../uploads/categories/<?= htmlspecialchars($c['image']) ?>" 
                                          alt="<?= htmlspecialchars($c['name']) ?>"
-                                         onerror="this.parentElement.innerHTML='<div class=\"placeholder\"><i class=\"fas fa-mobile-alt\"></i></div>';">
+                                         onerror="this.src='https://via.placeholder.com/70x70?text=<?= urlencode(substr($c['name'], 0, 10)) ?>'">
                                 <?php else: ?>
                                     <div class="placeholder">
-                                        <i class="fas fa-mobile-alt"></i>
+                                        <?php 
+                                        // Show different icons based on category name
+                                        $icon = 'fa-mobile-alt';
+                                        if (stripos($c['name'], 'back') !== false) $icon = 'fa-mobile';
+                                        elseif (stripos($c['name'], 'airpod') !== false) $icon = 'fa-earbuds';
+                                        elseif (stripos($c['name'], 'watch') !== false) $icon = 'fa-clock';
+                                        elseif (stripos($c['name'], 'protector') !== false) $icon = 'fa-shield-alt';
+                                        ?>
+                                        <i class="fas <?= $icon ?>"></i>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             <div class="category-name"><?= htmlspecialchars($c['name']) ?></div>
-                            <div class="category-count"><?= $c['product_count'] ?> Products</div>
                         </a>
                     <?php endwhile; ?>
                 </div>
             <?php else: ?>
                 <div class="text-center py-4">
-                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <i class="fas fa-folder-open fa-2x text-muted mb-2"></i>
                     <p class="text-muted">No categories available at the moment.</p>
                 </div>
             <?php endif; ?>
@@ -800,7 +986,7 @@ body {
     </section>
 
     <!-- ====================
-         POPULAR PRODUCTS
+         POPULAR PRODUCTS (SMALLER)
     ==================== -->
     <section id="products" class="products-section">
         <div class="container">
@@ -814,39 +1000,67 @@ body {
             <?php if ($popular && $popular->num_rows > 0): ?>
                 <div class="products-grid">
                     <?php while($p = $popular->fetch_assoc()): 
-                        $folder = ($p['main_category_id'] == 2) ? 'backcases' : 'protectors';
-                        $name = $p['model_name'] ?? $p['design_name'];
                         $price = number_format($p['price'], 2);
+                        // Get correct image path based on category
+                        $imagePath = '';
+                        switch($p['category_slug']) {
+                            case 'airpods':
+                                $imagePath = "../uploads/products/airpods/";
+                                break;
+                            default:
+                                $imagePath = "../uploads/products/";
+                        }
+                        $imageSrc = !empty($p['image']) ? $imagePath . htmlspecialchars($p['image']) : 'https://via.placeholder.com/200x140?text=No+Image';
+                        
+                        // Check if product is in user's wishlist/cart
+                        $inWishlist = in_array($p['id'], $user_wishlist);
+                        $inCart = in_array($p['id'], $user_cart);
                     ?>
-                        <div class="product-card">
+                        <div class="product-card" data-product-id="<?= $p['id'] ?>">
                             <span class="product-badge">Popular</span>
                             
                             <a href="productdetails.php?id=<?= $p['id'] ?>">
-                                <img src="../uploads/products/<?= $folder ?>/<?= htmlspecialchars($p['image']) ?>" 
-                                     alt="<?= htmlspecialchars($name) ?>" 
+                                <img src="<?= $imageSrc ?>" 
+                                     alt="<?= htmlspecialchars($p['product_name']) ?>" 
                                      class="product-image"
-                                     onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                                     onerror="this.src='https://via.placeholder.com/200x140?text=No+Image'">
                             </a>
                             
                             <div class="product-info">
-                                <div class="product-category"><?= htmlspecialchars($p['main_category_name']) ?></div>
+                                <div class="product-category"><?= htmlspecialchars($p['category_name']) ?></div>
                                 
                                 <h3 class="product-name">
                                     <a href="productdetails.php?id=<?= $p['id'] ?>" class="text-decoration-none text-dark">
-                                        <?= htmlspecialchars($name) ?>
+                                        <?= htmlspecialchars($p['product_name']) ?>
                                     </a>
                                 </h3>
                                 
-                                <div class="product-type"><?= htmlspecialchars($p['type_name']) ?></div>
+                                <div class="product-details">
+                                    <?php if (!empty($p['material_name'])): ?>
+                                        <div class="product-material">
+                                            <i class="fas fa-layer-group"></i> <?= htmlspecialchars($p['material_name']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($p['variant_name'])): ?>
+                                        <div class="product-variant">
+                                            <i class="fas fa-palette"></i> <?= htmlspecialchars($p['variant_name']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                                 
                                 <div class="product-price">₹ <?= $price ?></div>
                                 
                                 <div class="product-actions">
-                                    <button class="action-btn wishlist" data-product-id="<?= $p['id'] ?>">
-                                        <i class="far fa-heart"></i>
+                                    <button class="action-btn wishlist <?= $inWishlist ? 'active' : '' ?>" 
+                                            data-product-id="<?= $p['id'] ?>" 
+                                            <?= !$user_id ? 'data-bs-toggle="modal" data-bs-target="#loginModal"' : '' ?>>
+                                        <i class="<?= $inWishlist ? 'fas' : 'far' ?> fa-heart"></i>
                                     </button>
-                                    <button class="action-btn cart" data-product-id="<?= $p['id'] ?>">
-                                        <i class="fas fa-shopping-cart"></i> Add to Cart
+                                    <button class="action-btn cart <?= $inCart ? 'added' : '' ?>" 
+                                            data-product-id="<?= $p['id'] ?>" 
+                                            <?= !$user_id ? 'data-bs-toggle="modal" data-bs-target="#loginModal"' : '' ?>>
+                                        <i class="fas fa-shopping-cart"></i> 
+                                        <span><?= $inCart ? 'Added' : 'Add to Cart' ?></span>
                                     </button>
                                 </div>
                             </div>
@@ -854,10 +1068,10 @@ body {
                     <?php endwhile; ?>
                 </div>
             <?php else: ?>
-                <div class="text-center py-5">
-                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                <div class="text-center py-4">
+                    <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
                     <p class="text-muted">No popular products available at the moment.</p>
-                    <a href="products.php" class="btn btn-primary">Browse All Products</a>
+                    <a href="products.php" class="btn btn-primary btn-sm">Browse All Products</a>
                 </div>
             <?php endif; ?>
         </div>
@@ -868,7 +1082,7 @@ body {
     ==================== -->
     <section class="features-section">
         <div class="container">
-            <h2 class="section-title text-center mb-5">Why Choose PROGLIDE</h2>
+            <h2 class="section-title text-center mb-4">Why Choose PROGLIDE</h2>
             
             <div class="features-grid">
                 <div class="feature-card">
@@ -915,44 +1129,72 @@ body {
                 <div class="container">
                     <div class="section-header">
                         <h2 class="section-title"><?= htmlspecialchars($categoryData['name']) ?></h2>
-                        <a href="subcategories.php?cat=<?= $categoryData['slug'] ?>" class="view-all">
+                        <a href="products.php?category=<?= $categoryData['slug'] ?>" class="view-all">
                             View All <i class="fas fa-arrow-right"></i>
                         </a>
                     </div>
                     
                     <div class="products-grid">
                         <?php while($p = $categoryData['products']->fetch_assoc()): 
-                            $folder = ($p['main_category_id'] == 2) ? 'backcases' : 'protectors';
-                            $name = $p['model_name'] ?? $p['design_name'];
                             $price = number_format($p['price'], 2);
+                            // Get correct image path based on category
+                            $imagePath = '';
+                            switch($p['category_slug']) {
+                                case 'airpods':
+                                    $imagePath = "../uploads/products/airpods/";
+                                    break;
+                                default:
+                                    $imagePath = "../uploads/products/";
+                            }
+                            $imageSrc = !empty($p['image']) ? $imagePath . htmlspecialchars($p['image']) : 'https://via.placeholder.com/200x140?text=No+Image';
+                            
+                            // Check if product is in user's wishlist/cart
+                            $inWishlist = in_array($p['id'], $user_wishlist);
+                            $inCart = in_array($p['id'], $user_cart);
                         ?>
-                            <div class="product-card">
+                            <div class="product-card" data-product-id="<?= $p['id'] ?>">
                                 <a href="productdetails.php?id=<?= $p['id'] ?>">
-                                    <img src="../uploads/products/<?= $folder ?>/<?= htmlspecialchars($p['image']) ?>" 
-                                         alt="<?= htmlspecialchars($name) ?>" 
+                                    <img src="<?= $imageSrc ?>" 
+                                         alt="<?= htmlspecialchars($p['product_name']) ?>" 
                                          class="product-image"
-                                         onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                                         onerror="this.src='https://via.placeholder.com/200x140?text=No+Image'">
                                 </a>
                                 
                                 <div class="product-info">
-                                    <div class="product-category"><?= htmlspecialchars($p['main_category_name']) ?></div>
+                                    <div class="product-category"><?= htmlspecialchars($p['category_name']) ?></div>
                                     
                                     <h3 class="product-name">
                                         <a href="productdetails.php?id=<?= $p['id'] ?>" class="text-decoration-none text-dark">
-                                            <?= htmlspecialchars($name) ?>
+                                            <?= htmlspecialchars($p['product_name']) ?>
                                         </a>
                                     </h3>
                                     
-                                    <div class="product-type"><?= htmlspecialchars($p['type_name']) ?></div>
+                                    <div class="product-details">
+                                        <?php if (!empty($p['material_name'])): ?>
+                                            <div class="product-material">
+                                                <i class="fas fa-layer-group"></i> <?= htmlspecialchars($p['material_name']) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($p['variant_name'])): ?>
+                                            <div class="product-variant">
+                                                <i class="fas fa-palette"></i> <?= htmlspecialchars($p['variant_name']) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                     
                                     <div class="product-price">₹ <?= $price ?></div>
                                     
                                     <div class="product-actions">
-                                        <button class="action-btn wishlist" data-product-id="<?= $p['id'] ?>">
-                                            <i class="far fa-heart"></i>
+                                        <button class="action-btn wishlist <?= $inWishlist ? 'active' : '' ?>" 
+                                                data-product-id="<?= $p['id'] ?>" 
+                                                <?= !$user_id ? 'data-bs-toggle="modal" data-bs-target="#loginModal"' : '' ?>>
+                                            <i class="<?= $inWishlist ? 'fas' : 'far' ?> fa-heart"></i>
                                         </button>
-                                        <button class="action-btn cart" data-product-id="<?= $p['id'] ?>">
-                                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                                        <button class="action-btn cart <?= $inCart ? 'added' : '' ?>" 
+                                                data-product-id="<?= $p['id'] ?>" 
+                                                <?= !$user_id ? 'data-bs-toggle="modal" data-bs-target="#loginModal"' : '' ?>>
+                                            <i class="fas fa-shopping-cart"></i> 
+                                            <span><?= $inCart ? 'Added' : 'Add to Cart' ?></span>
                                         </button>
                                     </div>
                                 </div>
@@ -964,6 +1206,44 @@ body {
         <?php endforeach; ?>
     <?php endif; ?>
 
+    <!-- ====================
+         LOGIN MODAL
+    ==================== -->
+    <div class="modal fade login-modal" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Login Required</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="login-icon">
+                        <i class="fas fa-user-lock"></i>
+                    </div>
+                    <h3 class="login-title">Please Login First</h3>
+                    <p class="login-text">
+                        You need to login to add items to your wishlist or cart. 
+                        Don't have an account? Register now to enjoy all features!
+                    </p>
+                    
+                    <div class="login-buttons">
+                        <a href="login.php" class="btn-login">
+                            <i class="fas fa-sign-in-alt"></i> Login to Your Account
+                        </a>
+                        <a href="register.php" class="btn-register">
+                            <i class="fas fa-user-plus"></i> Create New Account
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <p class="text-muted text-center mb-0 w-100">
+                        <small>By logging in, you agree to our Terms & Conditions and Privacy Policy</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include "includes/footer.php"; ?>
     <?php include "includes/mobile_bottom_nav.php"; ?>
 
@@ -973,34 +1253,105 @@ body {
     <script>
         'use strict';
         
+        // Check if user is logged in
+        const isLoggedIn = <?= $user_id ? 'true' : 'false' ?>;
+        const csrfToken = '<?= bin2hex(random_bytes(32)) ?>';
+        
+        // Store cart and wishlist state
+        let cartState = <?= json_encode($user_cart) ?>;
+        let wishlistState = <?= json_encode($user_wishlist) ?>;
+        
         // Wishlist functionality
         document.addEventListener('click', function(e) {
             const wishlistBtn = e.target.closest('.wishlist');
             if (wishlistBtn) {
                 e.preventDefault();
-                const productId = wishlistBtn.dataset.productId;
+                
+                // Check if user is logged in
+                if (!isLoggedIn) {
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                    return;
+                }
+                
+                const productId = parseInt(wishlistBtn.dataset.productId);
                 const isActive = wishlistBtn.classList.contains('active');
-                
-                // Toggle UI
-                wishlistBtn.classList.toggle('active');
                 const icon = wishlistBtn.querySelector('i');
+                const productCard = wishlistBtn.closest('.product-card');
                 
-                if (wishlistBtn.classList.contains('active')) {
-                    icon.classList.remove('far');
-                    icon.classList.add('fas');
-                    showNotification('Added to wishlist!', 'success');
-                    
-                    // Send AJAX request
-                    fetch(`ajax/add_to_wishlist.php?id=${productId}`)
-                        .catch(err => console.error('Wishlist error:', err));
+                // Show loading
+                const originalIcon = icon.className;
+                icon.className = 'fas fa-spinner fa-spin';
+                
+                if (isActive) {
+                    // Remove from wishlist
+                    fetch(`ajax/remove_wishlist.php?id=${productId}&csrf=${csrfToken}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(result => {
+                        if (result.includes('success') || result.trim() === '') {
+                            // Update UI
+                            wishlistBtn.classList.remove('active');
+                            icon.className = 'far fa-heart';
+                            
+                            // Update state
+                            const index = wishlistState.indexOf(productId);
+                            if (index > -1) {
+                                wishlistState.splice(index, 1);
+                            }
+                            
+                            showNotification('Removed from wishlist', 'info');
+                        } else {
+                            // Revert on error
+                            wishlistBtn.classList.add('active');
+                            icon.className = 'fas fa-heart';
+                            showNotification('Error removing from wishlist', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Wishlist error:', error);
+                        wishlistBtn.classList.add('active');
+                        icon.className = 'fas fa-heart';
+                        showNotification('Network error', 'error');
+                    });
                 } else {
-                    icon.classList.remove('fas');
-                    icon.classList.add('far');
-                    showNotification('Removed from wishlist', 'info');
-                    
-                    // Send AJAX request
-                    fetch(`ajax/remove_wishlist.php?id=${productId}`)
-                        .catch(err => console.error('Wishlist error:', err));
+                    // Add to wishlist
+                    fetch(`ajax/add_to_wishlist.php?id=${productId}&csrf=${csrfToken}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(result => {
+                        if (result.includes('success') || result.trim() === '') {
+                            // Update UI
+                            wishlistBtn.classList.add('active');
+                            icon.className = 'fas fa-heart';
+                            
+                            // Update state
+                            if (!wishlistState.includes(productId)) {
+                                wishlistState.push(productId);
+                            }
+                            
+                            showNotification('Added to wishlist!', 'success');
+                        } else {
+                            // Revert on error
+                            wishlistBtn.classList.remove('active');
+                            icon.className = 'far fa-heart';
+                            showNotification('Error adding to wishlist', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Wishlist error:', error);
+                        wishlistBtn.classList.remove('active');
+                        icon.className = 'far fa-heart';
+                        showNotification('Network error', 'error');
+                    });
                 }
             }
             
@@ -1008,34 +1359,104 @@ body {
             const cartBtn = e.target.closest('.cart');
             if (cartBtn) {
                 e.preventDefault();
-                const productId = cartBtn.dataset.productId;
+                
+                // Check if user is logged in
+                if (!isLoggedIn) {
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                    return;
+                }
+                
+                const productId = parseInt(cartBtn.dataset.productId);
                 const isAdded = cartBtn.classList.contains('added');
-                
-                // Toggle UI
-                cartBtn.classList.toggle('added');
                 const icon = cartBtn.querySelector('i');
-                const text = cartBtn.querySelector('span') || cartBtn;
+                const textSpan = cartBtn.querySelector('span');
                 
-                if (cartBtn.classList.contains('added')) {
-                    cartBtn.innerHTML = '<i class="fas fa-check"></i> Added';
-                    showNotification('Added to cart!', 'success');
-                    
-                    // Update cart count
-                    updateCartCount(1);
-                    
-                    // Send AJAX request
-                    fetch(`ajax/add_to_cart.php?id=${productId}`)
-                        .catch(err => console.error('Cart error:', err));
+                // Show loading
+                const originalText = textSpan.textContent;
+                const originalIconClass = icon.className;
+                icon.className = 'fas fa-spinner fa-spin';
+                textSpan.textContent = 'Processing...';
+                
+                if (isAdded) {
+                    // Remove from cart
+                    fetch(`ajax/remove_cart.php?id=${productId}&csrf=${csrfToken}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(result => {
+                        if (result.includes('success') || result.trim() === '') {
+                            // Update UI
+                            cartBtn.classList.remove('added');
+                            icon.className = 'fas fa-shopping-cart';
+                            textSpan.textContent = 'Add to Cart';
+                            
+                            // Update state
+                            const index = cartState.indexOf(productId);
+                            if (index > -1) {
+                                cartState.splice(index, 1);
+                            }
+                            
+                            // Update cart count
+                            updateCartCount(-1);
+                            showNotification('Removed from cart', 'info');
+                        } else {
+                            // Revert on error
+                            cartBtn.classList.add('added');
+                            icon.className = 'fas fa-check';
+                            textSpan.textContent = 'Added';
+                            showNotification('Error removing from cart', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Cart error:', error);
+                        cartBtn.classList.add('added');
+                        icon.className = 'fas fa-check';
+                        textSpan.textContent = 'Added';
+                        showNotification('Network error', 'error');
+                    });
                 } else {
-                    cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Cart';
-                    showNotification('Removed from cart', 'info');
-                    
-                    // Update cart count
-                    updateCartCount(-1);
-                    
-                    // Send AJAX request
-                    fetch(`ajax/remove_cart.php?id=${productId}`)
-                        .catch(err => console.error('Cart error:', err));
+                    // Add to cart
+                    fetch(`ajax/add_to_cart.php?id=${productId}&qty=1&csrf=${csrfToken}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(result => {
+                        if (result.includes('success') || result.trim() === '') {
+                            // Update UI
+                            cartBtn.classList.add('added');
+                            icon.className = 'fas fa-check';
+                            textSpan.textContent = 'Added';
+                            
+                            // Update state
+                            if (!cartState.includes(productId)) {
+                                cartState.push(productId);
+                            }
+                            
+                            // Update cart count
+                            updateCartCount(1);
+                            showNotification('Added to cart!', 'success');
+                        } else {
+                            // Revert on error
+                            cartBtn.classList.remove('added');
+                            icon.className = 'fas fa-shopping-cart';
+                            textSpan.textContent = 'Add to Cart';
+                            showNotification('Error adding to cart', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Cart error:', error);
+                        cartBtn.classList.remove('added');
+                        icon.className = 'fas fa-shopping-cart';
+                        textSpan.textContent = 'Add to Cart';
+                        showNotification('Network error', 'error');
+                    });
                 }
             }
         });
@@ -1047,24 +1468,47 @@ body {
                 current = Math.max(0, current + change);
                 cartCount.textContent = current;
                 cartCount.style.display = current > 0 ? 'flex' : 'none';
+                
+                // Update cart count in mobile bottom nav if exists
+                const mobileCartCount = document.querySelector('.mobile-cart-count');
+                if (mobileCartCount) {
+                    mobileCartCount.textContent = current;
+                    mobileCartCount.style.display = current > 0 ? 'flex' : 'none';
+                }
             }
         }
         
         function showNotification(message, type) {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.custom-notification');
+            existingNotifications.forEach(notification => notification.remove());
+            
             // Create notification
             const notification = document.createElement('div');
-            notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            notification.className = `custom-notification alert alert-${type} alert-dismissible fade show`;
             notification.style.cssText = `
+                position: fixed;
                 top: 20px;
                 right: 20px;
                 z-index: 9999;
-                min-width: 300px;
+                min-width: 250px;
+                max-width: 300px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border-radius: 8px;
             `;
             
+            const icon = type === 'success' ? '✓' : type === 'info' ? 'ℹ' : '✗';
+            const bgColor = type === 'success' ? '#d4edda' : type === 'info' ? '#d1ecf1' : '#f8d7da';
+            const textColor = type === 'success' ? '#155724' : type === 'info' ? '#0c5460' : '#721c24';
+            
             notification.innerHTML = `
-                <strong>${type === 'success' ? '✓' : type === 'info' ? 'ℹ' : '✗'} </strong> ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: ${bgColor}; color: ${textColor}; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                        ${icon}
+                    </div>
+                    <div style="flex: 1; color: ${textColor}; font-size: 14px;">${message}</div>
+                    <button type="button" class="btn-close" style="font-size: 10px;" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
             `;
             
             document.body.appendChild(notification);
@@ -1095,13 +1539,49 @@ body {
         });
         
         // Image error handling
-        document.querySelectorAll('img').forEach(img => {
+        document.querySelectorAll('img.product-image, img.category-img img').forEach(img => {
             img.addEventListener('error', function() {
                 if (!this.hasAttribute('data-error-handled')) {
                     this.setAttribute('data-error-handled', 'true');
-                    this.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                    
+                    const currentSrc = this.src;
+                    const fileName = currentSrc.split('/').pop();
+                    
+                    if (currentSrc.includes('airpods')) {
+                        this.src = '../uploads/products/' + fileName;
+                    } else if (currentSrc.includes('uploads/products')) {
+                        this.src = '../uploads/products/airpods/' + fileName;
+                    } else {
+                        this.src = 'https://via.placeholder.com/200x140?text=No+Image';
+                    }
+                    
+                    this.addEventListener('error', function() {
+                        if (this.src.includes('uploads/products')) {
+                            this.src = 'https://via.placeholder.com/200x140?text=No+Image';
+                        }
+                    }, { once: true });
                 }
             });
+        });
+        
+        // Auto-focus login button when modal opens
+        document.getElementById('loginModal')?.addEventListener('shown.bs.modal', function() {
+            document.querySelector('.btn-login')?.focus();
+        });
+        
+        // Prevent default action for login-triggering buttons
+        document.querySelectorAll('[data-bs-target="#loginModal"]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (!isLoggedIn) {
+                    e.preventDefault();
+                }
+            });
+        });
+        
+        // Initialize cart count on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const initialCartCount = cartState.length;
+            updateCartCount(0); // This will set the initial count
         });
     </script>
 </body>
