@@ -26,12 +26,14 @@ if (!$stmt->get_result()->num_rows) {
     exit;
 }
 
-// Add to wishlist
-$insert_stmt = $conn->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id = user_id");
+// Add to wishlist (ignore duplicate)
+$insert_stmt = $conn->prepare("INSERT IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)");
 $insert_stmt->bind_param("ii", $user_id, $product_id);
-$insert_stmt->execute();
-
-echo json_encode(['success' => true, 'message' => 'Added to wishlist']);
+if ($insert_stmt->execute()) {
+    echo json_encode(['success' => true, 'message' => 'Added to wishlist']);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Failed to add to wishlist']);
+}
 
 $conn->close();
 ?>

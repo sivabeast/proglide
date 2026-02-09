@@ -20,11 +20,11 @@ SELECT
     p.model_name,
     p.design_name,
     p.price,
-    p.image,
-    mc.name AS main_category
+    p.image1 AS image,
+    cat.name AS main_category
 FROM wishlist w
 JOIN products p ON p.id = w.product_id
-JOIN main_categories mc ON mc.id = p.main_category_id
+JOIN categories cat ON cat.id = p.category_id
 WHERE w.user_id = ?
 ORDER BY w.id DESC
 ";

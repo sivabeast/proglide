@@ -1,36 +1,38 @@
 <?php
+session_start();
 require "../includes/db.php";
 
-header('Content-Type: text/html; charset=utf-8');
+header('Content-Type: application/json');
 
-$brand_id = isset($_GET['brand_id']) ? (int)$_GET['brand_id'] : 0;
+$brand_id = $_GET['brand_id'] ?? 0;
 
-if ($brand_id <= 0) {
-    echo '<option value="">Select Model</option>';
+if (!$brand_id) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Brand ID required'
+    ]);
     exit;
 }
 
-// Use prepared statement
-$stmt = $conn->prepare("
-    SELECT id, model_name 
-    FROM phone_models 
-    WHERE brand_id = ? AND status = 1 
-    ORDER BY model_name
-");
+$sql = "SELECT id, model_name 
+        FROM phone_models 
+        WHERE brand_id = ? AND status = 1 
+        ORDER BY model_name";
+
+$stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $brand_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows === 0) {
-    echo '<option value="">No models found</option>';
-} else {
-    while ($row = $result->fetch_assoc()) {
-        $id = htmlspecialchars($row['id']);
-        $name = htmlspecialchars($row['model_name']);
-        echo "<option value='{$id}'>{$name}</option>";
-    }
+$models = [];
+while ($row = $result->fetch_assoc()) {
+    $models[] = $row;
 }
 
-$stmt->close();
+echo json_encode([
+    'success' => true,
+    'models' => $models
+]);
+
 $conn->close();
 ?>

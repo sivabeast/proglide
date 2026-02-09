@@ -43,12 +43,12 @@ if ($isBuyNow) {
             p.price,
             p.model_name,
             p.design_name,
-            mc.name AS main_category,
+            c.name AS main_category,
             ? AS quantity,
             ? AS phone_model_id,
             pm.model_name AS phone_model
         FROM products p
-        JOIN main_categories mc ON mc.id = p.main_category_id
+        JOIN categories c ON c.id = p.category_id
         LEFT JOIN phone_models pm ON pm.id = ?
         WHERE p.id = ?
     ");
@@ -74,12 +74,12 @@ if ($isBuyNow) {
             p.price,
             p.model_name,
             p.design_name,
-            mc.name AS main_category,
+            cat.name AS main_category,
             c.phone_model_id,
             pm.model_name AS phone_model
         FROM cart c
         JOIN products p ON p.id = c.product_id
-        JOIN main_categories mc ON mc.id = p.main_category_id
+        JOIN categories cat ON cat.id = p.category_id
         LEFT JOIN phone_models pm ON pm.id = c.phone_model_id
         WHERE c.user_id = ?
     ");

@@ -18,16 +18,16 @@ SELECT
     c.quantity,
     p.id AS product_id,
     p.price,
-    p.image,
+    p.image1 AS image,
     p.model_name,
     p.design_name,
-    mc.name AS main_category,
-    ct.type_name,
+    cat.name AS main_category,
+    mt.name AS type_name,
     pm.model_name AS phone_model
 FROM cart c
 JOIN products p ON p.id = c.product_id
-JOIN main_categories mc ON mc.id = p.main_category_id
-JOIN category_types ct ON ct.id = p.category_type_id
+JOIN categories cat ON cat.id = p.category_id
+LEFT JOIN material_types mt ON mt.id = p.material_type_id
 LEFT JOIN phone_models pm ON pm.id = c.phone_model_id
 WHERE c.user_id = ?
 ORDER BY c.id DESC

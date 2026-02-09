@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$product_id = $_POST['product_id'] ?? 0;
+$product_id = $_GET['product_id'] ?? 0;
 
 if (!$product_id) {
     echo json_encode(['success' => false, 'message' => 'Invalid product']);
@@ -18,11 +18,13 @@ if (!$product_id) {
 }
 
 // Remove from wishlist
-$stmt = $conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
-$stmt->bind_param("ii", $user_id, $product_id);
-$stmt->execute();
-
-echo json_encode(['success' => true, 'message' => 'Removed from wishlist']);
+$delete_stmt = $conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
+$delete_stmt->bind_param("ii", $user_id, $product_id);
+if ($delete_stmt->execute()) {
+    echo json_encode(['success' => true, 'message' => 'Removed from wishlist']);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Failed to remove from wishlist']);
+}
 
 $conn->close();
 ?>

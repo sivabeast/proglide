@@ -43,25 +43,25 @@ if (isset($_POST['cancel_order'])) {
 ========================= */
 $stmt = $conn->prepare("
     SELECT o.*,
-           (SELECT p.image 
+           (SELECT p.image1 
             FROM order_items oi 
             JOIN products p ON p.id = oi.product_id 
             WHERE oi.order_id = o.id 
             LIMIT 1) AS first_image,
-           (SELECT LOWER(mc.name) 
+           (SELECT LOWER(c.name) 
             FROM order_items oi 
             JOIN products p ON p.id = oi.product_id
-            JOIN main_categories mc ON mc.id = p.main_category_id
+            JOIN categories c ON c.id = p.category_id
             WHERE oi.order_id = o.id 
             LIMIT 1) AS first_category,
            (SELECT CASE 
-                WHEN LOWER(mc.name) = 'back case' THEN 
+                WHEN LOWER(c.name) = 'back case' THEN 
                     CONCAT(COALESCE(p.design_name, ''), IF(oi.phone_model_id IS NOT NULL, CONCAT(' - ', pm.model_name), ''))
                 ELSE p.model_name 
             END
             FROM order_items oi 
             JOIN products p ON p.id = oi.product_id
-            JOIN main_categories mc ON mc.id = p.main_category_id
+            JOIN categories c ON c.id = p.category_id
             LEFT JOIN phone_models pm ON pm.id = oi.phone_model_id
             WHERE oi.order_id = o.id 
             LIMIT 1) AS first_product
@@ -112,7 +112,6 @@ body {
 /* MAIN CONTAINER */
 .container-custom {
     max-width: 1150px;
-    /* margin-top:5% ; */
     padding-top: 80px;
 }
 
@@ -293,11 +292,11 @@ if (isset($_GET['view'])) {
     
     // Fetch order items
     $stmt = $conn->prepare("
-        SELECT oi.*, p.model_name, p.design_name, p.image,
-               mc.name AS main_category, pm.model_name AS phone_model
+        SELECT oi.*, p.model_name, p.design_name, p.image1 as image,
+               c.name AS category, pm.model_name AS phone_model
         FROM order_items oi
         JOIN products p ON p.id = oi.product_id
-        JOIN main_categories mc ON mc.id = p.main_category_id
+        JOIN categories c ON c.id = p.category_id
         LEFT JOIN phone_models pm ON pm.id = oi.phone_model_id
         WHERE oi.order_id = ?
     ");
@@ -362,7 +361,7 @@ if (isset($_GET['view'])) {
     <h4 class="fw-bold mt-4 mb-3">Items</h4>
 
     <?php foreach ($order_items as $item): 
-        $isBackCase = strtolower($item['main_category'] ?? '') === 'back case';
+        $isBackCase = strtolower($item['category'] ?? '') === 'back case';
         $folder = $isBackCase ? 'backcases' : 'protectors';
         $imagePath = $item['image'] 
             ? "../uploads/products/{$folder}/" . htmlspecialchars($item['image'])
@@ -374,7 +373,7 @@ if (isset($_GET['view'])) {
             <h5 class="fw-bold mb-1">
                 <?php 
                 echo htmlspecialchars(
-                    strtolower($item['main_category']) === 'back case'
+                    strtolower($item['category']) === 'back case'
                     ? ($item['design_name'] . (isset($item['phone_model']) ? ' - ' . $item['phone_model'] : ''))
                     : $item['model_name']
                 ); 

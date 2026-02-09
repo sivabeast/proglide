@@ -1,103 +1,107 @@
 <?php
-// ajax/load_products.php
 session_start();
 require "../includes/db.php";
 
-// Get filters from POST
-$category_id = $_POST['category_id'] ?? 'all';
-$material_type_id = $_POST['material_type_id'] ?? 'all';
-$variant_type_id = $_POST['variant_type_id'] ?? 'all';
-$price_min = $_POST['price_min'] ?? '';
-$price_max = $_POST['price_max'] ?? '';
-$sort = $_POST['sort'] ?? 'new';
-$page = $_POST['page'] ?? 1;
-$limit = 10; // Products per page
+/* ===============================
+   INPUTS
+================================ */
+$category_id       = $_POST['category_id'] ?? 'all';
+$material_type_id  = $_POST['material_type_id'] ?? 'all';
+$variant_type_id   = $_POST['variant_type_id'] ?? 'all';
+$price_min         = $_POST['price_min'] ?? '';
+$price_max         = $_POST['price_max'] ?? '';
+$sort              = $_POST['sort'] ?? 'new';
+$search            = $_POST['search'] ?? '';
+$page              = max(1, (int)($_POST['page'] ?? 1));
+
+$limit  = 12;
 $offset = ($page - 1) * $limit;
 
-// Build WHERE clause
-$where = "WHERE p.status = 1";
+/* ===============================
+   WHERE
+================================ */
+$where  = "WHERE p.status = 1";
 $params = [];
-$types = "";
+$types  = "";
 
-if (!empty($category_id) && $category_id !== 'all') {
+// URL category parameter (from products.php?cat=)
+if (isset($_POST['category_id']) && $_POST['category_id'] !== 'all') {
+    $category_id = $_POST['category_id'];
+}
+
+if ($category_id !== 'all') {
     $where .= " AND p.category_id = ?";
     $params[] = $category_id;
     $types .= "i";
 }
 
-if (!empty($material_type_id) && $material_type_id !== 'all') {
+if ($material_type_id !== 'all') {
     $where .= " AND p.material_type_id = ?";
     $params[] = $material_type_id;
     $types .= "i";
 }
 
-if (!empty($variant_type_id) && $variant_type_id !== 'all') {
+if ($variant_type_id !== 'all') {
     $where .= " AND p.variant_type_id = ?";
     $params[] = $variant_type_id;
     $types .= "i";
 }
 
-if (!empty($price_min)) {
+if ($price_min !== '') {
     $where .= " AND p.price >= ?";
     $params[] = $price_min;
     $types .= "d";
 }
 
-if (!empty($price_max)) {
+if ($price_max !== '') {
     $where .= " AND p.price <= ?";
     $params[] = $price_max;
     $types .= "d";
 }
 
-// Build ORDER BY
-$order_by = "";
-switch ($sort) {
-    case 'popular':
-        $order_by = "ORDER BY p.is_popular DESC, p.created_at DESC";
-        break;
-    case 'low':
-        $order_by = "ORDER BY p.price ASC";
-        break;
-    case 'high':
-        $order_by = "ORDER BY p.price DESC";
-        break;
-    default:
-        $order_by = "ORDER BY p.created_at DESC";
-        break;
+if ($search !== '') {
+    $where .= " AND (p.model_name LIKE ? OR p.design_name LIKE ? 
+              OR mt.name LIKE ? OR vt.name LIKE ? OR c.name LIKE ?)";
+    $searchParam = "%$search%";
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $types .= "sssss";
 }
 
-// Get total count
-$count_sql = "SELECT COUNT(*) as total FROM products p $where";
-$count_stmt = $conn->prepare($count_sql);
+/* ===============================
+   ORDER BY
+================================ */
+$order_by = match ($sort) {
+    'popular' => "ORDER BY p.is_popular DESC, p.created_at DESC",
+    'low'     => "ORDER BY p.price ASC",
+    'high'    => "ORDER BY p.price DESC",
+    default   => "ORDER BY p.created_at DESC",
+};
 
-if (!empty($params)) {
-    $count_stmt->bind_param($types, ...$params);
-}
-
-$count_stmt->execute();
-$count_result = $count_stmt->get_result();
-$total_rows = $count_result->fetch_assoc()['total'];
-$total_pages = ceil($total_rows / $limit);
-
-// Get products with pagination
-$sql = "SELECT 
-    p.*,
-    c.name AS category_name,
-    c.slug AS category_slug,
-    mt.name AS material_name,
-    vt.name AS variant_name
+/* ===============================
+   QUERY
+================================ */
+$sql = "
+SELECT p.*,
+       c.name AS category_name,
+       c.slug AS category_slug,
+       mt.name AS material_name,
+       vt.name AS variant_name
 FROM products p
 LEFT JOIN categories c ON p.category_id = c.id
 LEFT JOIN material_types mt ON p.material_type_id = mt.id
 LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
 $where
 $order_by
-LIMIT ? OFFSET ?";
+LIMIT ? OFFSET ?
+";
 
-// Add pagination parameters
 $params[] = $limit;
 $params[] = $offset;
-$types .= "ii";
+$types   .= "ii";
 
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
@@ -106,163 +110,145 @@ if (!empty($params)) {
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Generate HTML with detailed product cards
-$html = '';
-if ($result->num_rows > 0) {
-    while ($product = $result->fetch_assoc()) {
-        // Determine if it's a back case category
-        $is_back_case = ($product['category_id'] == 2);
-        
-        // Get correct category slug for image path
-    
-        $image = $product['image1'] ?? '';
-        $categorySlug = $product['category_slug'] ?? 'others';
-        
-        $baseDir = dirname(__DIR__);
-$fsPath = $baseDir . "../uploads/products/$categorySlug/$image";
+/* ===============================
+   BASE PATHS
+================================ */
+$PROJECT_ROOT = dirname(dirname(__DIR__));
+$WEB_ROOT     = "/proglide";
 
-if (!empty($image) && file_exists($fsPath)) {
-    $imagePath = "../uploads/products/$categorySlug/$image";
-} else {
-    $imagePath = "/assets/no-image.png";
+$html = "";
+$total_products = 0;
+
+/* ===============================
+   LOOP
+================================ */
+while ($p = $result->fetch_assoc()) {
+    $total_products++;
+    
+    /* Dynamic folder using slug */
+    $folder = strtolower($p['category_slug'] ?? 'others');
+    $image  = $p['image1'] ?? '';
+    
+    /* filesystem check */
+    $fsPath = "$PROJECT_ROOT/uploads/products/$folder/$image";
+    
+    /* browser path */
+    if ($image && file_exists($fsPath)) {
+        $img = "$WEB_ROOT/uploads/products/$folder/$image";
+    } else {
+        $img = "$WEB_ROOT/assets/no-image.png";
+    }
+    
+    /* product name */
+    if ($p['category_id'] == 13) {
+        $product_name = trim(($p['model_name'] ?? 'Protector') .
+            ($p['variant_name'] ? " ({$p['variant_name']})" : ""));
+    } elseif ($p['category_id'] == 14) {
+        $product_name = $p['design_name'] ?? 'Back Cases';
+    } else {
+        $product_name = $p['model_name'] ?? 'Product';
+    }
+    
+    // Check if in wishlist for current user
+    $wishlist_active = '';
+    if (isset($_SESSION['user_id'])) {
+        $check_wish = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
+        $check_wish->bind_param("ii", $_SESSION['user_id'], $p['id']);
+        $check_wish->execute();
+        $wishlist_active = $check_wish->get_result()->num_rows > 0 ? 'active' : '';
+    }
+    
+    // Check if in cart for current user
+    $cart_active = '';
+    if (isset($_SESSION['user_id'])) {
+        $check_cart = $conn->prepare("SELECT id FROM cart WHERE user_id = ? AND product_id = ?");
+        $check_cart->bind_param("ii", $_SESSION['user_id'], $p['id']);
+        $check_cart->execute();
+        $cart_active = $check_cart->get_result()->num_rows > 0 ? 'added' : '';
+    }
+    
+    // Determine button text and class
+    $button_text = $cart_active ? 'ADDED' : 'Add to Cart';
+    $button_class = $cart_active ? 'added' : '';
+    
+    $html .= '
+    <div class="product-card" data-product-id="'.$p['id'].'">
+        <div class="product-image-container">
+            <img src="'.$img.'" class="product-image" loading="lazy"
+                 onerror="this.src=\''.$WEB_ROOT.'/assets/no-image.png\'">
+            <button class="wishlist-btn '.$wishlist_active.'" data-product-id="'.$p['id'].'">
+                '.($wishlist_active ? '<i class="fas fa-heart"></i>' : '<i class="far fa-heart"></i>').'
+            </button>
+            '.($p['is_popular'] ? '<span class="popular-badge">Popular</span>' : '').'
+        </div>
+
+        <div class="product-info">
+            <h4 class="product-title">'.htmlspecialchars($product_name).'</h4>
+
+            '.($p['material_name'] ? '<p class="product-material">'.$p['material_name'].'</p>' : '').'
+
+            <p class="product-category">'.$p['category_name'].'</p>
+
+            <div class="price-section">
+                <span class="current-price">₹'.number_format($p['price'], 2).'</span>
+                '.($p['original_price'] > $p['price']
+                    ? '<span class="original-price">₹'.number_format($p['original_price'], 2).'</span>'
+                    : '').'
+            </div>
+
+            <button class="action-btn '.($p['category_id']==2?'select-model-btn':'add-to-cart-btn').' '.$button_class.'" 
+                    data-product-id="'.$p['id'].'"
+                    style="'.($cart_active ? 'background: linear-gradient(135deg, #00e676, #00c853) !important; color: #fff !important;' : '').'">
+                '.($p['category_id']==2?'Select Model':$button_text).'
+            </button>
+        </div>
+    </div>';
 }
 
-
-        
-        // Determine product display name based on category
-        if ($product['category_id'] == 1) { // Protector
-            $display_name = $product['model_name'] ?? 'Protector';
-            $variant_info = $product['variant_name'] ? '(' . $product['variant_name'] . ')' : '';
-            $product_name = trim($display_name . ' ' . $variant_info);
-        } else if ($product['category_id'] == 2) { // Back Case
-            $display_name = $product['design_name'] ?? 'Back Case';
-            $product_name = $display_name;
-        } else {
-            $display_name = $product['model_name'] ?? $product['design_name'] ?? 'Product';
-            $product_name = $display_name;
-        }
-
-        $html .= '<div class="product-card" data-product-id="' . $product['id'] . '">';
-        $html .= '<div class="product-image-container">';
-
-        $html .= '<img src="' . $imagePath . '"
-            alt="' . htmlspecialchars($product_name) . '"
-            class="product-image"
-            loading="lazy"
-            onerror="this.src=\'/assets/no-image.png\'">';
-        
-        // Wishlist button
-        $html .= '<button class="wishlist-btn" data-product-id="' . $product['id'] . '">';
-        $html .= '<i class="far fa-heart"></i>';
-        $html .= '</button>';
-        
-        // Popular badge (ONLY ONCE)
-        if ($product['is_popular']) {
-            $html .= '<span class="popular-badge"><i class="fas fa-fire"></i> Popular</span>';
-        }
-        
-        $html .= '</div>'; // ✅ CLOSE product-image-container ONLY ONCE
-        
-
-
-        // Product Info
-        $html .= '<div class="product-info">';
-
-        // Product Name with Variant
-        $html .= '<h4 class="product-title">' . htmlspecialchars($product_name) . '</h4>';
-
-        // Material Type
-        if (!empty($product['material_name'])) {
-            $html .= '<span class="product-material"><p class="material-text"><i class="fas fa-gem"></i> ' . htmlspecialchars($product['material_name']) . '</p></span>';
-        }
-
-        // Category and Variant
-        $html .= '<span class="product-category">';
-        $html .= '<p class="category-text"><i class="fas fa-tag"></i> ' . htmlspecialchars($product['category_name']);
-        if ($product['category_id'] == 1 && !empty($product['variant_name'])) {
-            $html .= ' • <i class="fas fa-palette"></i> ' . htmlspecialchars($product['variant_name']);
-        }
-        $html .= '</p>';
-        $html .= '</span>';
-
-        // Price Section
-        $html .= '<div class="price-section">';
-        if (!empty($product['original_price']) && $product['original_price'] > $product['price']) {
-            $html .= '<span class="current-price">₹' . number_format($product['price'], 2) . '</span>';
-            $html .= '<span class="original-price">₹' . number_format($product['original_price'], 2) . '</span>';
-        } else {
-            $html .= '<span class="current-price">₹' . number_format($product['price'], 2) . '</span>';
-        }
-        $html .= '</div>';
-
-        // FIX: Always add a visible action button for all cards
-        $html .= '<div class="product-action">';
-        if ($is_back_case) {
-            $html .= '<button class="action-btn select-model-btn" data-product-id="' . $product['id'] . '">';
-            $html .= '<i class="fas fa-mobile-alt"></i> Select Model';
-            $html .= '</button>';
-        } else {
-            $html .= '<button class="action-btn add-to-cart-btn" data-product-id="' . $product['id'] . '">';
-            $html .= '<i class="fas fa-shopping-cart"></i> ADD TO CART';
-            $html .= '</button>';
-        }
-        $html .= '</div>'; // End .product-action
-
-        $html .= '</div>'; // Close product-info
-        $html .= '</div>'; // Close product-card
-    }
-} else {
-    $html = '<div class="no-products"><i class="fas fa-box-open"></i><h3>No Products Found</h3><p>Try changing your filters</p></div>';
+if ($html === '') {
+    $html = '<div class="no-products">
+                <i class="fas fa-box-open" style="font-size: 3rem; opacity: 0.3; margin-bottom: 20px;"></i>
+                <h3>No products found</h3>
+                <p>Try adjusting your filters or search terms</p>
+            </div>';
 }
 
 // Generate pagination
-$pagination = '';
-if ($total_pages > 1) {
-    $pagination .= '<div class="pagination-container">';
-    if ($page > 1) {
-        $pagination .= '<a href="#" class="page-link" data-page="' . ($page - 1) . '"><i class="fas fa-chevron-left"></i></a>';
-    }
+$pagination_html = '';
+if ($total_products > 0) {
+    $total_pages = ceil($total_products / $limit);
     
-    // Show limited pagination
-    $start_page = max(1, $page - 2);
-    $end_page = min($total_pages, $page + 2);
-    
-    if ($start_page > 1) {
-        $pagination .= '<a href="#" class="page-link" data-page="1">1</a>';
-        if ($start_page > 2) {
-            $pagination .= '<span class="page-dots">...</span>';
+    if ($total_pages > 1) {
+        $pagination_html .= '<div class="pagination">';
+        
+        // Previous
+        if ($page > 1) {
+            $pagination_html .= '<span class="page-link" data-page="'.($page-1).'">Previous</span>';
         }
-    }
-    
-    for ($i = $start_page; $i <= $end_page; $i++) {
-        if ($i == $page) {
-            $pagination .= '<span class="page-link active" data-page="' . $i . '">' . $i . '</span>';
-        } else {
-            $pagination .= '<a href="#" class="page-link" data-page="' . $i . '">' . $i . '</a>';
+        
+        // Pages
+        for ($i = 1; $i <= $total_pages; $i++) {
+            if ($i == $page) {
+                $pagination_html .= '<span class="page-link active">'.$i.'</span>';
+            } else {
+                $pagination_html .= '<span class="page-link" data-page="'.$i.'">'.$i.'</span>';
+            }
         }
-    }
-    
-    if ($end_page < $total_pages) {
-        if ($end_page < $total_pages - 1) {
-            $pagination .= '<span class="page-dots">...</span>';
+        
+        // Next
+        if ($page < $total_pages) {
+            $pagination_html .= '<span class="page-link" data-page="'.($page+1).'">Next</span>';
         }
-        $pagination .= '<a href="#" class="page-link" data-page="' . $total_pages . '">' . $total_pages . '</a>';
+        
+        $pagination_html .= '</div>';
     }
-    
-    if ($page < $total_pages) {
-        $pagination .= '<a href="#" class="page-link" data-page="' . ($page + 1) . '"><i class="fas fa-chevron-right"></i></a>';
-    }
-    $pagination .= '</div>';
 }
 
-// Return JSON response
-header('Content-Type: application/json');
 echo json_encode([
     'html' => $html,
-    'pagination' => $pagination,
-    'total' => $total_rows,
-    'page' => $page,
-    'total_pages' => $total_pages
+    'pagination' => $pagination_html,
+    'total' => $total_products,
+    'page' => $page
 ]);
 
 $conn->close();

@@ -23,12 +23,12 @@ if ($category_id && $category_id !== 'all') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title><?php echo $category_name ? htmlspecialchars($category_name) . ' | ' : '' ?>Products | PROGLIDE</title>
-    
+    <link rel="icon" type="image/x-icon" href="/proglide/image/logo.png">
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="products.css">
     <style>
         /* ============================================
            PRODUCTS PAGE STYLES - FULLY RESPONSIVE
@@ -388,295 +388,208 @@ if ($category_id && $category_id !== 'all') {
             gap: 10px;
             font-family: inherit;
         }
-        
-        /* Products Section */
-        .products-section {
-            width: 100%;
-            min-height: 500px;
+        .close-filter-btn:hover {
+            background: var(--border);
+            transform: translateY(-2px);
         }
         
-        /* Products Grid */
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
-            width: 100%;
-        }
-        
-        /* Product Card */
-        .product-card {
-            background: var(--secondary-light);
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            height: 380px; /* Fixed height */
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .product-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
-            box-shadow: 0 15px 40px rgba(255, 107, 53, 0.15);
-        }
-        
-        /* Product Image Container */
-        .product-image-container {
-            position: relative;
-            height: 200px; /* Fixed height */
-            background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-        
-        .product-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            transition: transform 0.5s ease;
-            width: auto;
-            height: auto;
-        }
-        
-        .product-card:hover .product-image {
-            transform: scale(1.05);
-        }
-        
-        /* Wishlist Button */
-        .wishlist-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 38px;
-            height: 38px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 50%;
-            color: var(--text-light);
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            z-index: 10;
-        }
-        
-        .wishlist-btn:hover {
-            background: var(--danger);
-            border-color: var(--danger);
-            color: white;
-            transform: scale(1.1);
-        }
-        
-        .wishlist-btn.active {
-            background: var(--danger);
-            border-color: var(--danger);
-            color: white;
-        }
-        
-        .wishlist-btn.active i {
-            animation: heartBeat 0.5s ease;
-        }
-        
-        @keyframes heartBeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-        
-        /* Popular Badge */
-        .popular-badge {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            z-index: 2;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
-        }
-        
-        .popular-badge i {
-            font-size: 0.8rem;
-            animation: firePulse 2s infinite;
-        }
-        
-        @keyframes firePulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        /* Product Info */
-        .product-info {
-            padding: 20px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .product-title {
-            color: var(--text-light);
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin: 0;
-            line-height: 1.3;
-            min-height: 35px;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
-        
-        .product-details {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        .product-material {
-            color: var(--primary);
-            font-size: 0.85rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 500;
-        }
-        
-        .product-material i {
-            font-size: 0.8rem;
-        }
-        
-        .product-category {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .product-category i {
-            font-size: 0.75rem;
-            min-width: 12px;
-        }
-        
-        /* Price Section */
-        .price-container {
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .current-price {
+      /* ================================
+   PRODUCTS GRID
+================================ */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+/* ================================
+   PRODUCT CARD
+================================ */
+.product-card {
+    background: #111;
+    border-radius: 16px;
+    border: 1px solid #222;
+    display: flex;
+    flex-direction: column;
+    height: 420px;              /* ✅ ALL CARDS SAME HEIGHT */
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    border-color: #ff6b35;
+    box-shadow: 0 10px 30px rgba(255, 107, 53, 0.25);
+}
+
+/* ================================
+   IMAGE SECTION
+================================ */
+.product-image-container {
+    height: 180px;              /* ✅ FIXED IMAGE AREA */
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 15px;
+}
+
+.product-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Wishlist */
+.wishlist-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #333;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Popular Badge */
+.popular-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ff6b35;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+/* ================================
+   PRODUCT INFO
+================================ */
+.product-info {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;               /* ✅ PUSH BUTTON DOWN */
+}
+
+/* Title */
+.product-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+    line-height: 1.3;
+    min-height: 40px;           /* ✅ SAME HEIGHT TITLE */
+}
+
+/* Material */
+.product-material {
+    font-size: 13px;
+    color: #ff6b35;
+    margin-bottom: 4px;
+}
+
+/* Category */
+.product-category {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+
+/* ================================
+   PRICE
+================================ */
+.price-section {
+    margin-top: auto;           /* ✅ STAYS ABOVE BUTTON */
+    margin-bottom: 10px;
+}
+
+.current-price {
     font-size: 18px;
     font-weight: bold;
-    color:rgb(11, 216, 21);
+    color: #00e676;
 }
 
 .original-price {
-    font-size: 14px;
-    color: #999;
+    font-size: 13px;
+    color: #888;
     text-decoration: line-through;
-    margin-left: 8px;
+    margin-left: 6px;
 }
 
-.discount-badge {
-    background: #ff4444;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin-left: 8px;
+/* ================================
+   ACTION BUTTON
+================================ */
+.product-action {
+    margin-top: auto;
 }
-        
-        /* Price Section (for load_products.php output) */
-        .price-section {
-            margin-top: auto;
-            padding-top: 10px;
-        }
-        
-        /* Action Button */
-        .action-btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            margin-top: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            flex-shrink: 0;
-        }
-        
-        .add-to-cart-btn {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
-        }
-        
-        .add-to-cart-btn:hover {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, #d4491e 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-        
-        .select-model-btn {
-            background: var(--secondary);
-            color: var(--text-light);
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .select-model-btn:hover {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-        
-        /* Add to Cart Success Animation */
-        @keyframes cartSuccess {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .add-to-cart-btn.added {
-            background: linear-gradient(135deg, var(--success) 0%, #20c997 100%);
-            animation: cartSuccess 0.5s ease;
-        }
-        
+
+.action-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+/* Add to Cart */
+.add-to-cart-btn {
+    background: linear-gradient(135deg, #ff6b35, #ff3d00);
+    color: #fff;
+}
+
+.add-to-cart-btn:hover {
+    background: linear-gradient(135deg, #ff3d00, #ff6b35);
+}
+
+/* Select Model */
+.select-model-btn {
+    background: #222;
+    color: #fff;
+    border: 1px solid #333;
+}
+
+.select-model-btn:hover {
+    background: #ff6b35;
+    border-color: #ff6b35;
+}
+
+/* ================================
+   MOBILE FIX
+================================ */
+@media (max-width: 600px) {
+    .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+
+    .product-card {
+        height: 360px;
+    }
+
+    .product-image-container {
+        height: 150px;
+    }
+
+    .product-title {
+        font-size: 14px;
+    }
+
+    .current-price {
+        font-size: 16px;
+    }
+}
+
         /* Loading State */
         .loading-state {
             text-align: center;
@@ -1914,63 +1827,101 @@ if ($category_id && $category_id !== 'all') {
     }
     
     // Add to Cart click handler
-    function handleAddToCartClick(e) {
-        const addToCartBtn = e.currentTarget;
-        const productId = addToCartBtn.dataset.productId;
-        
-        if (!isUserLoggedIn()) {
-            showLoginAlert('Please login to add items to cart');
-            return;
-        }
-        
-        addToCart(productId, addToCartBtn);
+ 
+function handleAddToCartClick(e) {
+    e.preventDefault();
+
+    const btn = e.currentTarget;
+    const productId = btn.dataset.productId;
+
+    // already added → remove
+    if (btn.classList.contains('added')) {
+        removeFromCart(productId, btn);
+    } else {
+        addToCart(productId, btn);
     }
-    
-    // Add to Cart
-    function addToCart(productId, button) {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
-        
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('product_id', productId);
-        formData.append('quantity', 1);
-        
-        // Make AJAX request
-        fetch('add_to_cart.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                button.classList.add('added');
-                button.innerHTML = '<i class="fas fa-check"></i> ADDED';
-                showNotification(data.message, 'success');
-                
-                // Update cart count
-                updateCartCount(data.cart_count);
-                
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    button.classList.remove('added');
-                    button.innerHTML = originalHTML;
-                    button.disabled = false;
-                }, 2000);
+}
+// bind AFTER products loaded
+function setupAddToCartButtons() {
+    document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
+        btn.removeEventListener("click", handleAddToCartClick);
+        btn.addEventListener("click", handleAddToCartClick);
+    });
+}
+
+
+    //add to cart
+   function addToCart(productId, button) {
+    const originalText = button.innerHTML;
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    // Use GET request to match add_to_cart.php endpoint
+    fetch(`ajax/add_to_cart.php?id=${productId}&qty=1`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            button.classList.add('added');
+            button.innerHTML = 'ADDED';
+            updateCartCount(data.cart_count);
+            showNotification(data.message, 'success');
+        } else {
+            // Check if it's a redirect (user not logged in)
+            if (data.redirect) {
+                if (confirm('Please login to add items to cart.\n\nDo you want to login?')) {
+                    window.location.href = data.redirect;
+                }
             } else {
-                showNotification(data.message, 'error');
-                button.innerHTML = originalHTML;
-                button.disabled = false;
+                showNotification(data.message || 'Failed to add to cart', 'error');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Failed to add to cart. Please try again.', 'error');
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showNotification('Add to cart failed. Please check your connection.', 'error');
+        button.innerHTML = originalText;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+function removeFromCart(productId, button) {
+    const originalHTML = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    const formData = new FormData();
+    formData.append('product_id', productId);
+
+    fetch('ajax/remove_cart.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            button.classList.remove('added');
+            button.innerHTML = 'Add to Cart';
+            updateCartCount(data.cart_count);
+            showNotification(data.message, 'info');
+        } else {
+            showNotification(data.message || 'Failed to remove from cart', 'error');
             button.innerHTML = originalHTML;
-            button.disabled = false;
-        });
-    }
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showNotification('Failed to remove from cart. Please check your connection.', 'error');
+        button.innerHTML = originalHTML;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+
     
     // Select Model click handler
     function handleSelectModelClick(e) {

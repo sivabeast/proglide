@@ -8,14 +8,11 @@ if (session_status() === PHP_SESSION_NONE) {
 $user_id = $_SESSION['user_id'] ?? null;
 $user_name = $_SESSION['user_name'] ?? '';
 
-/* =========================
-   CART COUNT
-========================= */
 $cart_count = 0;
 $wishlist_count = 0;
 
 if ($user_id) {
-    // Cart count
+  
     $cart_stmt = $conn->prepare("SELECT COALESCE(SUM(quantity),0) FROM cart WHERE user_id=?");
     if ($cart_stmt) {
         $cart_stmt->bind_param("i", $user_id);
@@ -25,7 +22,7 @@ if ($user_id) {
         $cart_stmt->close();
     }
     
-    // Wishlist count
+  
     $wish_stmt = $conn->prepare("SELECT COUNT(*) FROM wishlist WHERE user_id=?");
     if ($wish_stmt) {
         $wish_stmt->bind_param("i", $user_id);
@@ -49,9 +46,7 @@ $current = basename($_SERVER['PHP_SELF']);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-/* =========================
-   ROOT VARIABLES
-========================= */
+
 :root{
     --brand:#ff6b35;
     --bg-dark:#0b0b0b;
@@ -112,7 +107,7 @@ body{
 }
 
 .header-logo img{
-    height:34px;
+    height:54px;
     width:auto;
 }
 
@@ -353,7 +348,7 @@ body{
             <!-- LEFT SECTION: Logo (Mobile & Desktop) -->
             <div class="logo-section">
                 <a href="index.php" class="header-logo">
-                    <img src="/proglide/image/pro-logo.png" alt="PROGLIDE">
+                    <img src="/proglide/image/logo.png" alt="PROGLIDE">
                 </a>
             </div>
 
