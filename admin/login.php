@@ -29,7 +29,7 @@ if (isset($_POST['login'])) {
 
         if (password_verify($password, $admin['password'])) {
             $_SESSION['admin_id'] = $admin['id'];   // ✅ VERY IMPORTANT
-            header("Location: dashboard.php");
+            header("Location: index.php");
             exit;
         } else {
             $error = "Invalid username or password";

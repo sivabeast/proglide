@@ -151,33 +151,43 @@ while ($p = $result->fetch_assoc()) {
     
     // Check if in wishlist for current user
     $wishlist_active = '';
+    $wishlist_icon = 'far fa-heart';
     if (isset($_SESSION['user_id'])) {
         $check_wish = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
         $check_wish->bind_param("ii", $_SESSION['user_id'], $p['id']);
         $check_wish->execute();
-        $wishlist_active = $check_wish->get_result()->num_rows > 0 ? 'active' : '';
+        if ($check_wish->get_result()->num_rows > 0) {
+            $wishlist_active = ' active';
+            $wishlist_icon = 'fas fa-heart';
+        }
     }
     
     // Check if in cart for current user
-    $cart_active = '';
+    $in_cart = '';
+    $cart_button_class = '';
+    $cart_button_text = '<i class="fas fa-shopping-cart"></i> Add to Cart';
     if (isset($_SESSION['user_id'])) {
         $check_cart = $conn->prepare("SELECT id FROM cart WHERE user_id = ? AND product_id = ?");
         $check_cart->bind_param("ii", $_SESSION['user_id'], $p['id']);
         $check_cart->execute();
-        $cart_active = $check_cart->get_result()->num_rows > 0 ? 'added' : '';
+        if ($check_cart->get_result()->num_rows > 0) {
+            $in_cart = ' added';
+            $cart_button_class = 'added';
+            $cart_button_text = '<i class="fas fa-check"></i> Added';
+        }
     }
     
     // Determine button text and class
-    $button_text = $cart_active ? 'ADDED' : 'Add to Cart';
-    $button_class = $cart_active ? 'added' : '';
+    $button_text = $cart_button_class ? $cart_button_text : '<i class="fas fa-shopping-cart"></i> Add to Cart';
+    $button_style = $cart_button_class ? 'background: linear-gradient(135deg, #00e676, #00c853) !important; color: #fff !important;' : '';
     
     $html .= '
     <div class="product-card" data-product-id="'.$p['id'].'">
         <div class="product-image-container">
             <img src="'.$img.'" class="product-image" loading="lazy"
                  onerror="this.src=\''.$WEB_ROOT.'/assets/no-image.png\'">
-            <button class="wishlist-btn '.$wishlist_active.'" data-product-id="'.$p['id'].'">
-                '.($wishlist_active ? '<i class="fas fa-heart"></i>' : '<i class="far fa-heart"></i>').'
+            <button class="wishlist-btn'.$wishlist_active.'" data-product-id="'.$p['id'].'">
+                <i class="'.$wishlist_icon.'"></i>
             </button>
             '.($p['is_popular'] ? '<span class="popular-badge">Popular</span>' : '').'
         </div>
@@ -196,10 +206,10 @@ while ($p = $result->fetch_assoc()) {
                     : '').'
             </div>
 
-            <button class="action-btn '.($p['category_id']==2?'select-model-btn':'add-to-cart-btn').' '.$button_class.'" 
+            <button class="action-btn '.($p['category_id']==2?'select-model-btn':'add-to-cart-btn').$in_cart.'" 
                     data-product-id="'.$p['id'].'"
-                    style="'.($cart_active ? 'background: linear-gradient(135deg, #00e676, #00c853) !important; color: #fff !important;' : '').'">
-                '.($p['category_id']==2?'Select Model':$button_text).'
+                    style="'.$button_style.'">
+                '.($p['category_id']==2?'<i class="fas fa-mobile-alt"></i> Select Model':$button_text).'
             </button>
         </div>
     </div>';
