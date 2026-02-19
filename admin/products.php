@@ -6,19 +6,35 @@ require "includes/admin_auth.php";
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $product_id = $_GET['delete'];
     
-    // Get product images before deletion
-    $stmt = $conn->prepare("SELECT image1, image2, image3 FROM products WHERE id = ?");
+    // Get product images and category before deletion
+    $stmt = $conn->prepare("
+        SELECT p.image1, p.image2, p.image3, c.slug 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id 
+        WHERE p.id = ?
+    ");
     $stmt->bind_param("i", $product_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $product = $result->fetch_assoc();
     
-    // Delete image files
+    // Delete image files from category-specific folder
     if ($product) {
         $images = [$product['image1'], $product['image2'], $product['image3']];
+        $category_slug = $product['slug'] ?? 'general';
+        
         foreach ($images as $image) {
-            if ($image && file_exists("../uploads/products/" . $image)) {
-                unlink("../uploads/products/" . $image);
+            if ($image) {
+                // Try new path with category folder
+                $new_path = "../uploads/products/" . $category_slug . "/" . $image;
+                if (file_exists($new_path)) {
+                    unlink($new_path);
+                }
+                // Try old path as fallback
+                $old_path = "../uploads/products/" . $image;
+                if (file_exists($old_path)) {
+                    unlink($old_path);
+                }
             }
         }
     }
@@ -110,10 +126,11 @@ $stmt->execute();
 $total_products = $stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_products / $limit);
 
-// Get products with joins
+// Get products with joins - FIXED: Added category slug
 $query = "SELECT p.*, 
           c.name as category_name, 
           c.id as category_id,
+          c.slug as category_slug,
           mt.name as material_name,
           vt.name as variant_name
           FROM products p
@@ -137,6 +154,27 @@ $products = $stmt->get_result();
 
 // Get all categories for filter
 $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY name");
+
+// Helper function to get product image path
+function getProductImagePath($category_slug, $image_name) {
+    if (empty($image_name)) {
+        return "/proglide/assets/no-image.png";
+    }
+    
+    // Try new path with category folder
+    $new_path = "/proglide/uploads/products/" . $category_slug . "/" . $image_name;
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $new_path)) {
+        return $new_path;
+    }
+    
+    // Try old path as fallback
+    $old_path = "/proglide/uploads/products/" . $image_name;
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $old_path)) {
+        return $old_path;
+    }
+    
+    return "/proglide/assets/no-image.png";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -647,6 +685,11 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
             color: var(--info);
         }
 
+        .badge-secondary {
+            background: var(--dark-hover);
+            color: var(--text-muted);
+        }
+
         .price {
             font-weight: 600;
             color: var(--primary);
@@ -704,6 +747,17 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
         .action-btn.status:hover {
             background: var(--success);
             color: white;
+        }
+
+        /* Folder info */
+        .folder-info {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--dark-hover);
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 5px;
         }
 
         /* Pagination */
@@ -1052,7 +1106,10 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
                         <label>Category</label>
                         <select name="category" class="form-control">
                             <option value="">All Categories</option>
-                            <?php while($cat = $categories->fetch_assoc()): ?>
+                            <?php 
+                            $categories->data_seek(0);
+                            while($cat = $categories->fetch_assoc()): 
+                            ?>
                                 <option value="<?php echo $cat['id']; ?>" 
                                     <?php echo $category_filter == $cat['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($cat['name']); ?>
@@ -1101,14 +1158,17 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
                         </thead>
                         <tbody>
                             <?php if ($products && $products->num_rows > 0): ?>
-                                <?php while($product = $products->fetch_assoc()): ?>
+                                <?php while($product = $products->fetch_assoc()): 
+                                    $image_path = getProductImagePath($product['category_slug'] ?? 'general', $product['image1']);
+                                ?>
                                     <tr>
                                         <td>
                                             <div style="display: flex; align-items: center; gap: 15px;">
                                                 <div class="product-image">
                                                     <?php if ($product['image1']): ?>
-                                                        <img src="../uploads/products/<?php echo $product['image1']; ?>" 
-                                                             alt="<?php echo htmlspecialchars($product['design_name']); ?>">
+                                                        <img src="<?php echo $image_path; ?>" 
+                                                             alt="<?php echo htmlspecialchars($product['design_name'] ?? $product['model_name']); ?>"
+                                                             onerror="this.src='/proglide/assets/no-image.png'">
                                                     <?php else: ?>
                                                         <i class="fas fa-box"></i>
                                                     <?php endif; ?>
@@ -1118,6 +1178,11 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
                                                     <p>ID: #<?php echo $product['id']; ?></p>
                                                     <?php if ($product['design_name'] && $product['model_name']): ?>
                                                         <p style="font-size: 0.8rem;"><?php echo htmlspecialchars($product['model_name']); ?></p>
+                                                    <?php endif; ?>
+                                                    <?php if ($product['category_slug']): ?>
+                                                        <span class="folder-info">
+                                                            <i class="fas fa-folder"></i> <?php echo $product['category_slug']; ?>
+                                                        </span>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -1153,9 +1218,7 @@ $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY n
                                                 $params = $_GET;
                                                 $params['toggle_popular'] = $product['id'];
                                                 echo http_build_query($params);
-                                            ?>" class="badge <?php echo $product['is_popular'] ? 'badge-warning' : 'badge-secondary'; ?>" 
-                                               style="background: <?php echo $product['is_popular'] ? 'rgba(255,193,7,0.1)' : 'var(--dark-hover)'; ?>; 
-                                                      color: <?php echo $product['is_popular'] ? '#FFC107' : 'var(--text-muted)'; ?>;">
+                                            ?>" class="badge <?php echo $product['is_popular'] ? 'badge-warning' : 'badge-secondary'; ?>">
                                                 <i class="fas fa-star"></i>
                                                 <?php echo $product['is_popular'] ? 'Popular' : 'Set Popular'; ?>
                                             </a>

@@ -77,22 +77,22 @@ while ($cat = $catRes->fetch_assoc()) {
 }
 
 /* =========================
-   HELPERS
+   HELPERS - FIXED IMAGE FUNCTION
 ========================= */
 function productImage($slug, $img) {
     if (!$img) return "/proglide/assets/no-image.png";
-
-    $base = "/proglide/uploads/products/";
-    $map = [
-        'protectors' => 'protectors',
-        'backcases'  => 'backcases',
-        'airpods'    => 'airpods',
-        'mobilebatteries' => 'battery'
-    ];
-    $folder = $map[$slug] ?? 'others';
-    $path = $base . $folder . '/' . $img;
     
+    // Correct path: uploads/products/{category-slug}/{image}
+    $base = "/proglide/uploads/products/";
+    $path = $base . $slug . '/' . $img;
+    
+    // Check if image exists
     if (!file_exists($_SERVER['DOCUMENT_ROOT'] . $path)) {
+        // Fallback to old structure if exists
+        $old_path = $base . $img;
+        if (file_exists($_SERVER['DOCUMENT_ROOT'] . $old_path)) {
+            return $old_path;
+        }
         return "/proglide/assets/no-image.png";
     }
     return $path;
@@ -110,20 +110,332 @@ function productImage($slug, $img) {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="style/index.css">
 <link rel="icon" type="image/x-icon" href="/proglide/image/logo.png">
 
-
 <style>
-/* Horizontal Scroll Styles */
-.scroll-container {
+/* ============================================
+   PROGLIDE - INDEX PAGE WITH PRODUCTS.PLY STYLE CARDS
+   ============================================ */
+
+:root {
+    --primary: #FF6B35;
+    --primary-dark: #e55a2b;
+    --primary-light: rgba(255, 107, 53, 0.1);
+    --secondary: #FF8E53;
+    --dark-bg: #0a0a0a;
+    --dark-card: #1a1a1a;
+    --dark-border: #2a2a2a;
+    --dark-hover: #252525;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-muted: #808080;
+    --success: #4CAF50;
+    --warning: #FFC107;
+    --danger: #F44336;
+    --info: #2196F3;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-hover: 0 8px 25px rgba(255, 107, 53, 0.2);
+    --transition: all 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* ============================================
+   HERO SECTION - DESKTOP ONLY
+   ============================================ */
+.hero-desktop-only {
+    display: block;
+    background: linear-gradient(145deg, #0f172a, #1e293b);
+    color: white;
+    padding: 40px 0 60px;
+    position: relative;
+    overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .hero-desktop-only {
+        display: none;
+    }
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 20px;
+}
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 20px;
+}
+
+.hero-title span {
+    color: var(--primary);
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-bottom: 30px;
+    max-width: 500px;
+}
+
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    max-width: 600px;
+    margin-top: 40px;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 20px 15px;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: white;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   CATEGORIES SECTION - HORIZONTAL SCROLL
+   ============================================ */
+.categories-section {
+    background: var(--dark-card);
+    padding: 25px 0;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-sm);
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 0 20px;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: var(--primary);
+    font-size: 1.2rem;
+}
+
+.view-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    background: var(--primary-light);
+    border-radius: 30px;
+    transition: var(--transition);
+}
+
+.view-all-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateX(5px);
+}
+
+.view-all-btn i {
+    font-size: 0.8rem;
+    transition: var(--transition);
+}
+
+.view-all-btn:hover i {
+    transform: translateX(3px);
+}
+
+/* Horizontal Scroll Container */
+.categories-scroll-container {
     width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: var(--primary) #e0e0e0;
-    padding-bottom: 15px;
+    scrollbar-color: var(--primary) var(--dark-border);
+    padding: 5px 20px 15px 20px;
+    scroll-behavior: smooth;
+}
+
+.categories-scroll-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.categories-scroll-container::-webkit-scrollbar-track {
+    background: var(--dark-border);
+    border-radius: 10px;
+}
+
+.categories-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 10px;
+}
+
+.categories-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* Categories Wrapper - Horizontal Flex */
+.categories-wrapper {
+    display: flex;
+    gap: 15px;
+    padding: 5px 0;
+    width: max-content;
+}
+
+/* Category Item - Horizontal Card */
+.category-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-primary);
+    padding: 15px 12px;
+    border-radius: var(--radius);
+    transition: var(--transition);
+    background: var(--dark-hover);
+    border: 1px solid var(--dark-border);
+    min-width: 110px;
+    position: relative;
+    overflow: hidden;
+}
+
+.category-item:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+    background: var(--dark-card);
+}
+
+.category-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: var(--dark-card);
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.category-item:hover img {
+    transform: scale(1.1);
+}
+
+.category-item span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    margin-bottom: 4px;
+}
+
+.category-count {
+    font-size: 0.7rem;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* ============================================
+   PRODUCTS SECTION - HORIZONTAL SCROLL
+   PRODUCTS.PLY STYLE CARDS
+   ============================================ */
+.products-section {
+    background: white;
+    padding: 25px 0;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-sm);
+}
+
+.products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.products-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: black;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.products-title i {
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+/* Scroll Container */
+.scroll-container {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 5px 20px 15px 20px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--dark-border);
+    scroll-behavior: smooth;
 }
 
 .scroll-container::-webkit-scrollbar {
@@ -131,7 +443,7 @@ function productImage($slug, $img) {
 }
 
 .scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--dark-border);
     border-radius: 10px;
 }
 
@@ -140,19 +452,640 @@ function productImage($slug, $img) {
     border-radius: 10px;
 }
 
-.scroll-container::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
-}
-
 .scroll-wrapper {
     display: flex;
     gap: 20px;
-    padding: 10px 0 20px 0;
+    width: max-content;
+    padding: 5px 0;
 }
 
-.scroll-wrapper .product-card {
-    flex: 0 0 280px;
-    width: 280px;
+/* Product Card - Products.php Style */
+.product-card {
+    width: 260px;
+    min-width: 260px;
+    background: var(--dark-card);
+    border: 1px solid var(--dark-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: var(--transition);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-hover);
+}
+
+/* Product Image */
+.product-image-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 80%;
+    background: white;
+    overflow: hidden;
+}
+
+.product-image-wrapper img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 15px;
+    transition: transform 0.5s ease;
+}
+
+.product-card:hover .product-image-wrapper img {
+    transform: scale(1.05);
+}
+
+/* Popular Badge */
+.popular-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, var(--warning), #ff9800);
+    color: #000;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.popular-badge i {
+    font-size: 0.65rem;
+}
+
+/* Wishlist Button */
+.wishlist-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    background: var(--dark-card);
+    border: 1px solid var(--dark-border);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+    font-size: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.wishlist-btn:hover {
+    background: #ff4d4d;
+    color: white;
+    border-color: #ff4d4d;
+    transform: scale(1.1);
+}
+
+.wishlist-btn.active {
+    background: #ff4d4d;
+    color: white;
+    border-color: #ff4d4d;
+}
+
+/* Product Info */
+.product-info {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.product-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 48px;
+    line-height: 1.4;
+}
+
+/* Material Type - Only this, no category */
+.product-material {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--dark-hover);
+    padding: 4px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 8px;
+    align-self: flex-start;
+    border: 1px solid var(--dark-border);
+}
+
+/* Category tag - HIDDEN */
+.product-category {
+    display: none;
+}
+
+/* Price Section */
+.price-section {
+    margin: 8px 0 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: 48px;
+}
+
+.current-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.original-price {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.discount-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--success);
+    background: rgba(76, 175, 80, 0.1);
+    padding: 3px 8px;
+    border-radius: 20px;
+}
+
+/* Action Buttons */
+.product-actions {
+    margin-top: auto;
+    display: flex;
+    width: 100%;
+}
+
+.action-btn {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.add-to-cart {
+    background: var(--primary);
+    color: white;
+}
+
+.add-to-cart:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.add-to-cart.added {
+    background: var(--success);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.select-model {
+    background: linear-gradient(135deg, var(--info), #1976d2);
+    color: white;
+}
+
+.select-model:hover {
+    background: linear-gradient(135deg, #1976d2, #1565c0);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+/* ============================================
+   FEATURES SECTION
+   ============================================ */
+.features-section {
+    background: var(--dark-card);
+    padding: 40px 0;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-sm);
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+    padding: 0 20px;
+}
+
+.feature-item {
+    text-align: center;
+    padding: 25px 15px;
+    background: var(--dark-hover);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    border: 1px solid var(--dark-border);
+}
+
+.feature-item:hover {
+    border-color: var(--primary);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    color: white;
+    font-size: 1.4rem;
+}
+
+.feature-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.feature-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ============================================
+   TOAST NOTIFICATION
+   ============================================ */
+.toast-message {
+    position: fixed;
+    top: 90px;
+    right: 20px;
+    z-index: 9999;
+    background: var(--dark-card);
+    color: var(--text-primary);
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow);
+    animation: slideIn 0.3s ease;
+    max-width: 350px;
+    border-left: 4px solid var(--primary);
+}
+
+.toast-message.success {
+    border-left-color: var(--success);
+}
+
+.toast-message.error {
+    border-left-color: var(--danger);
+}
+
+.toast-message i {
+    font-size: 1.1rem;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Tablet (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .product-card {
+        width: 240px;
+        min-width: 240px;
+    }
+    
+    .category-item {
+        min-width: 100px;
+    }
+}
+
+/* Mobile (max-width: 767px) */
+@media (max-width: 767px) {
+    .hero-desktop-only {
+        display: none;
+    }
+    
+    .categories-section {
+        padding: 15px 0;
+    }
+    
+    .section-header {
+        padding: 0 15px;
+        margin-bottom: 15px;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+    }
+    
+    .section-title i {
+        font-size: 1rem;
+    }
+    
+    .view-all-btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+    
+    .categories-scroll-container {
+        padding: 5px 15px 12px 15px;
+    }
+    
+    .categories-wrapper {
+        gap: 12px;
+    }
+    
+    .category-item {
+        min-width: 95px;
+        padding: 12px 8px;
+    }
+    
+    .category-item img {
+        width: 50px;
+        height: 50px;
+        padding: 6px;
+    }
+    
+    .category-item span {
+        font-size: 0.75rem;
+    }
+    
+    .category-count {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+    
+    .products-section {
+        padding: 15px 0;
+    }
+    
+    .products-header {
+        padding: 0 15px;
+        margin-bottom: 15px;
+    }
+    
+    .products-title {
+        font-size: 1.1rem;
+    }
+    
+    .scroll-container {
+        padding: 5px 15px 12px 15px;
+    }
+    
+    .scroll-wrapper {
+        gap: 15px;
+    }
+    
+    .product-card {
+        width: 220px;
+        min-width: 220px;
+    }
+    
+    .product-image-wrapper {
+        padding-top: 75%;
+    }
+    
+    .product-info {
+        padding: 14px;
+    }
+    
+    .product-title {
+        font-size: 0.9rem;
+        min-height: 42px;
+    }
+    
+    .product-material {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+    }
+    
+    .price-section {
+        margin: 6px 0 10px;
+        min-height: 42px;
+    }
+    
+    .current-price {
+        font-size: 1rem;
+    }
+    
+    .original-price {
+        font-size: 0.7rem;
+    }
+    
+    .discount-badge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+    }
+    
+    .action-btn {
+        padding: 10px 12px;
+        font-size: 0.75rem;
+        min-height: 40px;
+    }
+    
+    .action-btn i {
+        font-size: 0.75rem;
+    }
+    
+    .wishlist-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    
+    .features-section {
+        padding: 30px 0;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        padding: 0 15px;
+    }
+    
+    .feature-item {
+        padding: 20px 10px;
+    }
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+    
+    .feature-title {
+        font-size: 0.9rem;
+    }
+    
+    .feature-text {
+        font-size: 0.7rem;
+    }
+    
+    .toast-message {
+        left: 15px;
+        right: 15px;
+        max-width: none;
+    }
+}
+
+/* Small Mobile (max-width: 375px) */
+@media (max-width: 375px) {
+    .category-item {
+        min-width: 85px;
+        padding: 10px 6px;
+    }
+    
+    .category-item img {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .category-item span {
+        font-size: 0.7rem;
+    }
+    
+    .product-card {
+        width: 200px;
+        min-width: 200px;
+    }
+    
+    .product-info {
+        padding: 12px;
+    }
+    
+    .product-title {
+        font-size: 0.85rem;
+        min-height: 38px;
+    }
+    
+    .action-btn {
+        padding: 8px 10px;
+        font-size: 0.7rem;
+        min-height: 38px;
+    }
+    
+    /* Hide text on very small screens */
+    .action-btn span {
+        display: none;
+    }
+    
+    .action-btn i {
+        font-size: 0.8rem;
+        margin: 0;
+    }
+    
+    .popular-badge {
+        padding: 4px 8px;
+        font-size: 0.6rem;
+    }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .product-card:hover,
+    .category-item:hover,
+    .feature-item:hover {
+        transform: none;
+    }
+    
+    .action-btn:hover {
+        transform: none;
+    }
+    
+    .action-btn:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.product-card,
+.category-item,
+.feature-item {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fa-spinner {
+    animation: spin 1s linear infinite;
 }
 </style>
 </head>
@@ -233,7 +1166,7 @@ function productImage($slug, $img) {
 </section>
 
 <!-- ============================================
-     CATEGORIES - FLIPCART/AMAZON STYLE (TINY CARDS)
+     CATEGORIES - HORIZONTAL SCROLL
      ============================================ -->
 <section id="categories" class="categories-section">
     <div class="container">
@@ -247,29 +1180,31 @@ function productImage($slug, $img) {
             </a>
         </div>
         
-        <div class="categories-grid">
-            <?php 
-            $categories->data_seek(0);
-            while($c = $categories->fetch_assoc()): 
-                $category_image = !empty($c['image']) ? "/proglide/uploads/categories/" . htmlspecialchars($c['image']) : '/proglide/assets/no-image.png';
-                $count_query = $conn->query("SELECT COUNT(*) FROM products WHERE category_id = {$c['id']} AND status = 1");
-                $product_count = $count_query->fetch_row()[0];
-            ?>
-                <a href="products.php?cat=<?= $c['id'] ?>" class="category-item">
-                    <img src="<?= $category_image ?>" 
-                         onerror="this.src='/proglide/assets/no-image.png'"
-                         alt="<?= htmlspecialchars($c['name']) ?>"
-                         loading="lazy">
-                    <span><?= htmlspecialchars($c['name']) ?></span>
-                    <span class="category-count"><?= $product_count ?></span>
-                </a>
-            <?php endwhile; ?>
+        <div class="categories-scroll-container">
+            <div class="categories-wrapper">
+                <?php 
+                $categories->data_seek(0);
+                while($c = $categories->fetch_assoc()): 
+                    $category_image = !empty($c['image']) ? "/proglide/uploads/categories/" . htmlspecialchars($c['image']) : '/proglide/assets/no-image.png';
+                    $count_query = $conn->query("SELECT COUNT(*) FROM products WHERE category_id = {$c['id']} AND status = 1");
+                    $product_count = $count_query->fetch_row()[0];
+                ?>
+                    <a href="products.php?cat=<?= $c['id'] ?>" class="category-item">
+                        <img src="<?= $category_image ?>" 
+                             onerror="this.src='/proglide/assets/no-image.png'"
+                             alt="<?= htmlspecialchars($c['name']) ?>"
+                             loading="lazy">
+                        <span><?= htmlspecialchars($c['name']) ?></span>
+                        <span class="category-count"><?= $product_count ?></span>
+                    </a>
+                <?php endwhile; ?>
+            </div>
         </div>
     </div>
 </section>
 
 <!-- ============================================
-     POPULAR PRODUCTS - HORIZONTAL SCROLL (MANUAL)
+     POPULAR PRODUCTS - HORIZONTAL SCROLL
      ============================================ -->
 <section id="popular-products" class="products-section">
     <div class="container">
@@ -283,9 +1218,8 @@ function productImage($slug, $img) {
             </a>
         </div>
         
-        <!-- HORIZONTAL SCROLL CONTAINER - MANUAL SCROLL ONLY -->
         <div class="scroll-container">
-            <div class="scroll-wrapper" id="popular-scroll">
+            <div class="scroll-wrapper">
                 <?php 
                 $popular->data_seek(0);
                 while($p = $popular->fetch_assoc()): 
@@ -294,6 +1228,7 @@ function productImage($slug, $img) {
                         $discount = round((($p['original_price'] - $p['price']) / $p['original_price']) * 100);
                     }
                     
+                    // Product name based on category
                     if ($p['category_id'] == 1) {
                         $product_name = trim(($p['model_name'] ?? 'Protector') . 
                             ($p['variant_name'] ? " ({$p['variant_name']})" : ""));
@@ -305,6 +1240,7 @@ function productImage($slug, $img) {
                     
                     $image_path = productImage($p['category_slug'], $p['image1']);
                     
+                    // Cart button status
                     $cart_button_class = '';
                     $cart_button_text = '<i class="fas fa-shopping-cart"></i> Add';
                     if ($user_id) {
@@ -317,6 +1253,7 @@ function productImage($slug, $img) {
                         }
                     }
                     
+                    // Wishlist status
                     $in_wishlist = '';
                     $wishlist_icon = 'far fa-heart';
                     if ($user_id) {
@@ -350,12 +1287,9 @@ function productImage($slug, $img) {
                         <div class="product-info">
                             <h4 class="product-title"><?= htmlspecialchars($product_name) ?></h4>
                             
-                            <div class="product-meta">
-                                <?php if ($p['material_name']): ?>
-                                    <span class="product-material"><?= htmlspecialchars($p['material_name']) ?></span>
-                                <?php endif; ?>
-                                <span class="product-category"><?= htmlspecialchars($p['category_name']) ?></span>
-                            </div>
+                            <?php if ($p['material_name']): ?>
+                                <span class="product-material"><?= htmlspecialchars($p['material_name']) ?></span>
+                            <?php endif; ?>
                             
                             <div class="price-section">
                                 <span class="current-price">₹<?= number_format($p['price'], 0) ?></span>
@@ -385,7 +1319,7 @@ function productImage($slug, $img) {
 </section>
 
 <!-- ============================================
-     CATEGORY WISE PRODUCTS - HORIZONTAL SCROLL (MANUAL)
+     CATEGORY WISE PRODUCTS - HORIZONTAL SCROLL
      ============================================ -->
 <?php foreach($categoryProducts as $cat): ?>
 <section class="products-section">
@@ -400,9 +1334,8 @@ function productImage($slug, $img) {
             </a>
         </div>
         
-        <!-- HORIZONTAL SCROLL CONTAINER - MANUAL SCROLL ONLY -->
         <div class="scroll-container">
-            <div class="scroll-wrapper" id="category-scroll-<?= $cat['id'] ?>">
+            <div class="scroll-wrapper">
                 <?php 
                 $cat['products']->data_seek(0);
                 while($p = $cat['products']->fetch_assoc()): 
@@ -411,6 +1344,7 @@ function productImage($slug, $img) {
                         $discount = round((($p['original_price'] - $p['price']) / $p['original_price']) * 100);
                     }
                     
+                    // Product name based on category
                     if ($p['category_id'] == 1) {
                         $product_name = trim(($p['model_name'] ?? 'Protector') . 
                             ($p['variant_name'] ? " ({$p['variant_name']})" : ""));
@@ -422,6 +1356,7 @@ function productImage($slug, $img) {
                     
                     $image_path = productImage($cat['slug'], $p['image1']);
                     
+                    // Cart button status
                     $cart_button_class = '';
                     $cart_button_text = '<i class="fas fa-shopping-cart"></i> Add';
                     if ($user_id) {
@@ -434,6 +1369,7 @@ function productImage($slug, $img) {
                         }
                     }
                     
+                    // Wishlist status
                     $in_wishlist = '';
                     $wishlist_icon = 'far fa-heart';
                     if ($user_id) {
@@ -467,12 +1403,9 @@ function productImage($slug, $img) {
                         <div class="product-info">
                             <h4 class="product-title"><?= htmlspecialchars($product_name) ?></h4>
                             
-                            <div class="product-meta">
-                                <?php if ($p['material_name']): ?>
-                                    <span class="product-material"><?= htmlspecialchars($p['material_name']) ?></span>
-                                <?php endif; ?>
-                                <span class="product-category"><?= htmlspecialchars($p['category_name']) ?></span>
-                            </div>
+                            <?php if ($p['material_name']): ?>
+                                <span class="product-material"><?= htmlspecialchars($p['material_name']) ?></span>
+                            <?php endif; ?>
                             
                             <div class="price-section">
                                 <span class="current-price">₹<?= number_format($p['price'], 0) ?></span>

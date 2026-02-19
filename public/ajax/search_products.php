@@ -10,10 +10,12 @@ if (strlen($search) < 2) {
     exit;
 }
 
+// Modified SQL to include category slug
 $sql = "SELECT 
             p.*, 
             c.name as category_name,
             c.id as category_id,
+            c.slug as category_slug,
             mt.name as material_name,
             vt.name as variant_name
         FROM products p 
@@ -32,10 +34,30 @@ $stmt->bind_param("ssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, 
 $stmt->execute();
 $result = $stmt->get_result();
 
+// Helper function to get product image path
+function getProductImagePath($category_slug, $image_name) {
+    if (empty($image_name)) {
+        return "/proglide/assets/no-image.png";
+    }
+    
+    // Try path with category slug
+    $new_path = "/proglide/uploads/products/" . $category_slug . "/" . $image_name;
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $new_path)) {
+        return $new_path;
+    }
+    
+    // Try old path as fallback
+    $old_path = "/proglide/uploads/products/" . $image_name;
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $old_path)) {
+        return $old_path;
+    }
+    
+    return "/proglide/assets/no-image.png";
+}
+
 $html = '';
 if ($result->num_rows > 0) {
     while ($product = $result->fetch_assoc()) {
-        $image = !empty($product['image1']) ? $product['image1'] : 'default.jpg';
         $is_back_case = ($product['category_id'] == 2); // Assuming category_id 2 is Back Case
         
         // Determine product display name based on category
@@ -51,11 +73,15 @@ if ($result->num_rows > 0) {
             $product_name = $display_name;
         }
         
+        // Get correct image path
+        $category_slug = $product['category_slug'] ?? 'general';
+        $image_path = getProductImagePath($category_slug, $product['image1'] ?? '');
+        
         $html .= '<div class="product-card" data-product-id="' . $product['id'] . '">';
         
         // Product Image Container
         $html .= '<div class="product-image-container">';
-        $html .= '<img src="../uploads/products/' . $image . '" alt="' . htmlspecialchars($product_name) . '" class="product-image" loading="lazy">';
+        $html .= '<img src="' . $image_path . '" alt="' . htmlspecialchars($product_name) . '" class="product-image" loading="lazy" onerror="this.onerror=null; this.src=\'/proglide/assets/no-image.png\';">';
         
         // Wishlist Icon (Heart)
         $html .= '<button class="wishlist-btn" data-product-id="' . $product['id'] . '" aria-label="Add to wishlist">';

@@ -46,8 +46,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errors[] = "Please enter a valid price";
     }
     
-    // Handle image uploads
-    $upload_dir = "../uploads/products/";
+    // Get category slug for folder name
+    $cat_query = $conn->prepare("SELECT slug FROM categories WHERE id = ?");
+    $cat_query->bind_param("i", $category_id);
+    $cat_query->execute();
+    $cat_result = $cat_query->get_result();
+    $category_data = $cat_result->fetch_assoc();
+    $category_slug = $category_data['slug'] ?? 'general';
+    
+    // Create category-specific upload directory
+    $upload_dir = "../uploads/products/" . $category_slug . "/";
     
     // Create directory if not exists
     if (!file_exists($upload_dir)) {
@@ -119,10 +127,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     // If no errors, insert into database
     if (empty($errors)) {
-        // Based on your database structure, the products table has these columns:
-        // id, category_id, material_type_id, variant_type_id, model_name, design_name, 
-        // description, price, original_price, image1, image2, image3, status, is_popular, created_at
-        
+        // Store only filename in database, not the full path
         $stmt = $conn->prepare("
             INSERT INTO products (
                 category_id, material_type_id, variant_type_id, 
@@ -142,41 +147,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $image2 = empty($image2) ? null : $image2;
         $image3 = empty($image3) ? null : $image3;
         
-        // CORRECTED: Type string must match number of parameters
-        // Parameters: 
-        // 1. category_id (i)
-        // 2. material_type_id (i)
-        // 3. variant_type_id (i - can be null)
-        // 4. model_name (s - can be null)
-        // 5. design_name (s - can be null)
-        // 6. description (s - can be null)
-        // 7. price (d)
-        // 8. original_price (d - can be null) ← THIS WAS THE ISSUE (was 's' before)
-        // 9. image1 (s)
-        // 10. image2 (s - can be null)
-        // 11. image3 (s - can be null)
-        // 12. status (i)
-        // 13. is_popular (i)
-        
         $stmt->bind_param(
-            "iiisssddsssii",  // 13 characters: i,i,i,s,s,s,d,d,s,s,s,i,i
-            $category_id,      // i
-            $material_type_id, // i
-            $variant_type_id,  // i
-            $model_name,       // s
-            $design_name,      // s
-            $description,      // s
-            $price,            // d
-            $original_price,   // d (was s before, causing the error)
-            $image1,           // s
-            $image2,           // s
-            $image3,           // s
-            $status,           // i
-            $is_popular        // i
+            "iiisssddsssii",
+            $category_id,
+            $material_type_id,
+            $variant_type_id,
+            $model_name,
+            $design_name,
+            $description,
+            $price,
+            $original_price,
+            $image1,
+            $image2,
+            $image3,
+            $status,
+            $is_popular
         );
         
         if ($stmt->execute()) {
-            $success = "Product added successfully!";
+            $success = "Product added successfully! Images saved in: " . $category_slug . " folder";
             // Clear form
             $design_name = $model_name = $description = $price = $original_price = "";
             $category_id = $material_type_id = $variant_type_id = 0;
@@ -798,6 +787,28 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             to { transform: rotate(360deg); }
         }
 
+        /* Category Folder Info */
+        .folder-info {
+            background: var(--primary-light);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-sm);
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+        }
+
+        .folder-info i {
+            font-size: 1.5rem;
+        }
+
+        .folder-info span {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
         /* Responsive */
         @media (max-width: 992px) {
             .sidebar {
@@ -1009,6 +1020,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                 </div>
             <?php endif; ?>
             
+            <!-- Category Folder Info -->
+            <div class="folder-info" id="folderInfo" style="display: none;">
+                <i class="fas fa-folder-open"></i>
+                <div>
+                    Images will be saved in: <span id="folderPath">uploads/products/</span>
+                </div>
+            </div>
+            
             <!-- Add Product Form -->
             <div class="form-card">
                 <div class="form-title">
@@ -1031,6 +1050,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                                 while($cat = $categories->fetch_assoc()): 
                                 ?>
                                     <option value="<?php echo $cat['id']; ?>" 
+                                        data-slug="<?php echo $cat['slug']; ?>"
                                         <?php echo $category_id == $cat['id'] ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($cat['name']); ?>
                                     </option>
@@ -1181,6 +1201,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                             <div class="form-text">
                                 <i class="fas fa-info-circle"></i>
                                 Supported formats: JPG, PNG, WEBP. Max size: 5MB per image.
+                                <br>
+                                <i class="fas fa-folder"></i>
+                                Images will be automatically organized by category folder.
                             </div>
                         </div>
                         
@@ -1260,8 +1283,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             const categoryId = this.value;
             const materialSelect = document.getElementById('material_type_id');
             const variantSelect = document.getElementById('variant_type_id');
+            const folderInfo = document.getElementById('folderInfo');
+            const folderPath = document.getElementById('folderPath');
+            
+            // Get selected option's slug
+            const selectedOption = this.options[this.selectedIndex];
+            const slug = selectedOption.getAttribute('data-slug');
             
             if (categoryId) {
+                // Show folder info
+                folderInfo.style.display = 'flex';
+                folderPath.textContent = 'uploads/products/' + slug + '/';
+                
                 // Show loading
                 materialSelect.innerHTML = '<option value="">Loading...</option>';
                 variantSelect.innerHTML = '<option value="">Loading...</option>';
@@ -1280,6 +1313,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                         variantSelect.innerHTML = html;
                     });
             } else {
+                folderInfo.style.display = 'none';
                 materialSelect.innerHTML = '<option value="">Select Category First</option>';
                 variantSelect.innerHTML = '<option value="">Select Category First</option>';
             }
