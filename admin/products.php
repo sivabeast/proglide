@@ -302,12 +302,7 @@ function getProductImagePath($category_slug, $image_name) {
             font-size: 1.1rem;
         }
 
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-            transition: var(--transition);
-        }
+       
 
         /* Header */
         .header {
@@ -961,110 +956,9 @@ function getProductImagePath($category_slug, $image_name) {
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="logo">
-            <h1>PROGLIDE</h1>
-            <p>Admin Dashboard</p>
-        </div>
-        
-        <ul class="nav-menu">
-            <li class="nav-item">
-                <a href="index.php" class="nav-link">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="products.php" class="nav-link active">
-                    <i class="fas fa-box"></i>
-                    <span>Products</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="add_product.php" class="nav-link">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Add Product</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="categories.php" class="nav-link">
-                    <i class="fas fa-layer-group"></i>
-                    <span>Categories</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="orders.php" class="nav-link">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Orders</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="users.php" class="nav-link">
-                    <i class="fas fa-users"></i>
-                    <span>Users</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="brands.php" class="nav-link">
-                    <i class="fas fa-tag"></i>
-                    <span>Brands</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="phone_models.php" class="nav-link">
-                    <i class="fas fa-mobile-alt"></i>
-                    <span>Phone Models</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="material_types.php" class="nav-link">
-                    <i class="fas fa-cube"></i>
-                    <span>Materials</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="variant_types.php" class="nav-link">
-                    <i class="fas fa-paint-bucket"></i>
-                    <span>Variants</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="settings.php" class="nav-link">
-                    <i class="fas fa-cog"></i>
-                    <span>Settings</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <button class="menu-toggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h2><i class="fas fa-box"></i> Products</h2>
-            </div>
-            
-            <div class="header-right">
-                <div class="admin-profile">
-                    <div class="admin-avatar">
-                        <?php echo isset($_SESSION['admin_name']) ? strtoupper(substr($_SESSION['admin_name'], 0, 1)) : 'A'; ?>
-                    </div>
-                    <div class="admin-info">
-                        <h4><?php echo isset($_SESSION['admin_name']) ? htmlspecialchars($_SESSION['admin_name']) : 'Admin'; ?></h4>
-                        <p>Administrator</p>
-                    </div>
-                </div>
-                <button class="logout-btn" onclick="window.location.href='logout.php'">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </button>
-            </div>
-        </div>
+  <?php include "includes/header.php"; ?>   
+<?php include "includes/sidebar.php"; ?>
+    <div class="main-content"></div>
         
         <!-- Content -->
         <div class="content">

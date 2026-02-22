@@ -1,12 +1,23 @@
 <?php
 require_once "../includes/db.php";
+
+// Function to check admin authentication
+function checkAdminAuth() {
+    session_start();
+    if (!isset($_SESSION['admin_id'])) {
+        header('HTTP/1.0 401 Unauthorized');
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+}
+
 checkAdminAuth();
 
 header('Content-Type: application/json');
 
 $category_id = $_GET['category_id'] ?? '';
 
-if (empty($category_id)) {
+if (empty($category_id) || !is_numeric($category_id)) {
     echo json_encode([]);
     exit;
 }
