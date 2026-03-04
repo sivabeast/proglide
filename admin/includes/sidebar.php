@@ -75,7 +75,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         
         <li class="nav-item">
             <a href="variant_types.php" class="nav-link <?php echo $current_page == 'variant_types.php' ? 'active' : ''; ?>">
-                <i class="fas fa-paint-bucket"></i>
+                <i class="fas fa-swatchbook"></i>
                 <span>Variants</span>
             </a>
         </li>

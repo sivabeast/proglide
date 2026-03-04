@@ -2,56 +2,6 @@
 require "includes/admin_db.php";
 require "includes/admin_auth.php";
 
-// Handle order status update
-if (isset($_POST['update_status'])) {
-    $order_id = (int)$_POST['order_id'];
-    $status = trim($_POST['status']);
-    
-    $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");
-    $stmt->bind_param("si", $status, $order_id);
-    
-    if ($stmt->execute()) {
-        $success_message = "Order #$order_id status updated to $status";
-    } else {
-        $error_message = "Error updating order status: " . $conn->error;
-    }
-}
-
-// Handle payment status update
-if (isset($_POST['update_payment'])) {
-    $order_id = (int)$_POST['order_id'];
-    $payment_status = trim($_POST['payment_status']);
-    
-    $stmt = $conn->prepare("UPDATE orders SET payment_status = ? WHERE id = ?");
-    $stmt->bind_param("si", $payment_status, $order_id);
-    
-    if ($stmt->execute()) {
-        $success_message = "Order #$order_id payment status updated to $payment_status";
-    } else {
-        $error_message = "Error updating payment status: " . $conn->error;
-    }
-}
-
-// Handle delete order
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $order_id = $_GET['delete'];
-    
-    // First delete order items
-    $stmt = $conn->prepare("DELETE FROM order_items WHERE order_id = ?");
-    $stmt->bind_param("i", $order_id);
-    $stmt->execute();
-    
-    // Then delete order
-    $stmt = $conn->prepare("DELETE FROM orders WHERE id = ?");
-    $stmt->bind_param("i", $order_id);
-    
-    if ($stmt->execute()) {
-        $success_message = "Order #$order_id deleted successfully!";
-    } else {
-        $error_message = "Error deleting order: " . $conn->error;
-    }
-}
-
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
@@ -70,13 +20,12 @@ $params = [];
 $types = "";
 
 if (!empty($search)) {
-    $where_conditions[] = "(o.id LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
+    $where_conditions[] = "(o.id LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR oa.full_name LIKE ? OR oa.phone LIKE ?)";
     $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $types .= "ssss";
+    for ($i = 0; $i < 6; $i++) {
+        $params[] = $search_param;
+    }
+    $types .= "ssssss";
 }
 
 if (!empty($status_filter)) {
@@ -108,6 +57,7 @@ $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_c
 // Get total orders count for pagination
 $count_query = "SELECT COUNT(*) as total FROM orders o 
                 LEFT JOIN users u ON o.user_id = u.id 
+                LEFT JOIN order_addresses oa ON o.id = oa.order_id
                 $where_clause";
 $stmt = $conn->prepare($count_query);
 if (!empty($params)) {
@@ -117,14 +67,21 @@ $stmt->execute();
 $total_orders = $stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_orders / $limit);
 
-// Get orders with user details
+// Get orders with details
 $query = "SELECT o.*, 
           u.name as user_name, 
           u.email as user_email, 
           u.phone as user_phone,
-          (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
+          oa.full_name as shipping_name,
+          oa.phone as shipping_phone,
+          oa.address,
+          oa.pincode,
+          oa.notes,
+          (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count,
+          (SELECT SUM(quantity) FROM order_items WHERE order_id = o.id) as total_items
           FROM orders o 
           LEFT JOIN users u ON o.user_id = u.id 
+          LEFT JOIN order_addresses oa ON o.id = oa.order_id
           $where_clause 
           ORDER BY o.created_at DESC 
           LIMIT ? OFFSET ?";
@@ -186,7 +143,7 @@ function getPaymentColor($status) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orders Management | PROGLIDE</title>
+    <title>Orders Management | PROGLIDE Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         * {
@@ -829,6 +786,11 @@ function getPaymentColor($status) {
             color: white;
         }
 
+        .action-btn.print:hover {
+            background: var(--success);
+            color: white;
+        }
+
         /* Status Update Form */
         .status-form {
             display: flex;
@@ -1047,9 +1009,10 @@ function getPaymentColor($status) {
         }
 
         .order-items-table th {
-            background: var(--dark-card);
+            background: var(--dark-hover);
             padding: 12px;
             font-size: 0.85rem;
+            color: var(--text-primary);
         }
 
         .order-items-table td {
@@ -1189,11 +1152,19 @@ function getPaymentColor($status) {
     </style>
 </head>
 <body>
-    <?php include "includes/header.php"; ?>   
-<?php include "includes/sidebar.php"; ?>
+    <!-- Sidebar -->
+    <?php include "includes/sidebar.php"; ?>
     
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <?php 
+        $page_title = "Orders Management";
+        $page_icon = "fas fa-shopping-cart";
+        include "includes/header.php"; 
+        ?>
+        
         <!-- Content -->
-         <div class="main-content">
         <div class="content">
             <!-- Alerts -->
             <?php if (isset($success_message)): ?>
@@ -1342,7 +1313,7 @@ function getPaymentColor($status) {
                     </div>
                     
                     <div class="form-group">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; background: var(--primary); color: white; padding: 12px; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer;">
                             <i class="fas fa-search"></i>
                             Apply Filters
                         </button>
@@ -1372,17 +1343,17 @@ function getPaymentColor($status) {
                                     <tr>
                                         <td>
                                             <div class="order-info">
-                                                <span class="order-id">#<?php echo $order['id']; ?></span>
+                                                <span class="order-id">#<?php echo str_pad($order['id'], 6, '0', STR_PAD_LEFT); ?></span>
                                                 <span class="order-date"><?php echo date('d M Y, h:i A', strtotime($order['created_at'])); ?></span>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="customer-info">
                                                 <div class="customer-avatar">
-                                                    <?php echo strtoupper(substr($order['user_name'] ?? 'G', 0, 1)); ?>
+                                                    <?php echo strtoupper(substr($order['shipping_name'] ?? $order['user_name'] ?? 'G', 0, 1)); ?>
                                                 </div>
                                                 <div class="customer-details">
-                                                    <span class="customer-name"><?php echo htmlspecialchars($order['user_name'] ?? 'Guest User'); ?></span>
+                                                    <span class="customer-name"><?php echo htmlspecialchars($order['shipping_name'] ?? $order['user_name'] ?? 'Guest User'); ?></span>
                                                     <span class="customer-email"><?php echo htmlspecialchars($order['user_email'] ?? 'No email'); ?></span>
                                                 </div>
                                             </div>
@@ -1391,47 +1362,35 @@ function getPaymentColor($status) {
                                             <span class="amount">₹<?php echo number_format($order['total_amount'], 2); ?></span>
                                         </td>
                                         <td>
-                                            <span class="item-count"><?php echo $order['item_count']; ?> items</span>
+                                            <span class="item-count"><?php echo $order['total_items'] ?? $order['item_count']; ?> items</span>
                                         </td>
                                         <td>
-                                            <form method="POST" class="status-form">
-                                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                                <select name="status" class="status-select">
-                                                    <option value="Pending" <?php echo $order['status'] == 'Pending' ? 'selected' : ''; ?>>Pending</option>
-                                                    <option value="Processing" <?php echo $order['status'] == 'Processing' ? 'selected' : ''; ?>>Processing</option>
-                                                    <option value="Delivered" <?php echo $order['status'] == 'Delivered' ? 'selected' : ''; ?>>Delivered</option>
-                                                    <option value="Cancelled" <?php echo $order['status'] == 'Cancelled' ? 'selected' : ''; ?>>Cancelled</option>
-                                                </select>
-                                                <button type="submit" name="update_status" class="update-btn">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                            </form>
+                                            <span class="badge badge-<?php echo getStatusColor($order['status']); ?>">
+                                                <i class="fas fa-<?php echo $order['status'] == 'Pending' ? 'clock' : ($order['status'] == 'Processing' ? 'spinner' : ($order['status'] == 'Delivered' ? 'check-circle' : 'times-circle')); ?>"></i>
+                                                <?php echo $order['status']; ?>
+                                            </span>
                                         </td>
                                         <td>
-                                            <form method="POST" class="status-form">
-                                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                                <select name="payment_status" class="status-select">
-                                                    <option value="pending" <?php echo $order['payment_status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
-                                                    <option value="paid" <?php echo $order['payment_status'] == 'paid' ? 'selected' : ''; ?>>Paid</option>
-                                                    <option value="failed" <?php echo $order['payment_status'] == 'failed' ? 'selected' : ''; ?>>Failed</option>
-                                                </select>
-                                                <button type="submit" name="update_payment" class="update-btn">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                            </form>
+                                            <span class="badge badge-<?php echo getPaymentColor($order['payment_status']); ?>">
+                                                <i class="fas fa-<?php echo $order['payment_status'] == 'paid' ? 'check-circle' : ($order['payment_status'] == 'pending' ? 'clock' : 'exclamation-circle'); ?>"></i>
+                                                <?php echo ucfirst($order['payment_status']); ?>
+                                            </span>
+                                            <?php if (!empty($order['payment_method'])): ?>
+                                                <div class="mt-1"><small><?php echo $order['payment_method'] == 'upi' ? 'UPI' : 'COD'; ?></small></div>
+                                            <?php endif; ?>
                                         </td>
                                         <td><?php echo date('d M Y', strtotime($order['created_at'])); ?></td>
                                         <td>
                                             <div class="action-buttons">
                                                 <button onclick="viewOrder(<?php echo $order['id']; ?>)" 
-                                                        class="action-btn view">
+                                                        class="action-btn view" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                     View
                                                 </button>
-                                                <button onclick="confirmDelete(<?php echo $order['id']; ?>)" 
-                                                        class="action-btn delete">
-                                                    <i class="fas fa-trash"></i>
-                                                    Delete
+                                                <button onclick="printOrder(<?php echo $order['id']; ?>)" 
+                                                        class="action-btn print" title="Print Invoice">
+                                                    <i class="fas fa-print"></i>
+                                                    Print
                                                 </button>
                                             </div>
                                         </td>
@@ -1509,35 +1468,9 @@ function getPaymentColor($status) {
                     <i class="fas fa-times"></i>
                     Close
                 </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Delete Order</h3>
-                <button class="modal-close" onclick="closeDeleteModal()">
-                    <i class="fas fa-times"></i>
+                <button class="btn btn-primary" onclick="printOrder()" style="background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer;">
+                    <i class="fas fa-print"></i> Print Invoice
                 </button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete Order #<strong id="deleteOrderId"></strong>?</p>
-                <p style="margin-top: 15px; color: var(--danger);">
-                    <i class="fas fa-exclamation-circle"></i>
-                    This action cannot be undone. All order items will be permanently deleted.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeDeleteModal()">
-                    <i class="fas fa-times"></i>
-                    Cancel
-                </button>
-                <a href="#" id="confirmDeleteBtn" class="btn btn-danger">
-                    <i class="fas fa-trash"></i>
-                    Delete Order
-                </a>
             </div>
         </div>
     </div>
@@ -1582,7 +1515,7 @@ function getPaymentColor($status) {
             modal.classList.add('active');
             
             // Load order details via AJAX
-            fetch('get_order_details.php?id=' + orderId)
+            fetch('ajax/get_order_details.php?id=' + orderId)
                 .then(response => response.text())
                 .then(html => {
                     content.innerHTML = html;
@@ -1596,15 +1529,9 @@ function getPaymentColor($status) {
             document.getElementById('viewOrderModal').classList.remove('active');
         }
         
-        // Delete confirmation
-        function confirmDelete(orderId) {
-            document.getElementById('deleteOrderId').textContent = orderId;
-            document.getElementById('confirmDeleteBtn').href = '?delete=' + orderId;
-            document.getElementById('deleteModal').classList.add('active');
-        }
-        
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.remove('active');
+        // Print order
+        function printOrder(orderId) {
+            window.open('print_order.php?id=' + orderId, '_blank');
         }
         
         // Auto-hide alerts after 5 seconds

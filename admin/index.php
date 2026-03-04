@@ -1,12 +1,19 @@
 <?php
 require "includes/admin_db.php";
 require "includes/admin_auth.php";
+include "includes/header.php";
+include "includes/sidebar.php";
 
-// Get dashboard statistics
+// Page title for header
+$page_title = "Dashboard";
+$page_icon = "fas fa-tachometer-alt";
+
+// Get dashboard statistics from proglide.sql tables only
 $total_products = 0;
 $total_orders = 0;
 $total_users = 0;
 $revenue = 0;
+$pending_orders = 0;
 
 // Get total products
 $result = $conn->query("SELECT COUNT(*) as total FROM products");
@@ -14,10 +21,15 @@ if ($result) {
     $total_products = $result->fetch_assoc()['total'];
 }
 
-// Get total orders
-$result = $conn->query("SELECT COUNT(*) as total FROM orders");
+// Get total orders and pending orders
+$result = $conn->query("SELECT 
+    COUNT(*) as total,
+    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending
+    FROM orders");
 if ($result) {
-    $total_orders = $result->fetch_assoc()['total'];
+    $row = $result->fetch_assoc();
+    $total_orders = $row['total'];
+    $pending_orders = $row['pending'] ?? 0;
 }
 
 // Get total users
@@ -27,12 +39,12 @@ if ($result) {
 }
 
 // Get total revenue from paid orders
-$result = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE payment_status = 'paid'");
+$result = $conn->query("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE payment_status = 'paid'");
 if ($result) {
-    $revenue = $result->fetch_assoc()['total'] ?? 0;
+    $revenue = $result->fetch_assoc()['total'];
 }
 
-// Get recent orders
+// Get recent orders - LAST 5 ONLY
 $recent_orders = $conn->query("
     SELECT o.*, u.name as user_name 
     FROM orders o 
@@ -41,22 +53,53 @@ $recent_orders = $conn->query("
     LIMIT 5
 ");
 
-// Get popular products
+// Get popular products with images
 $popular_products = $conn->query("
-    SELECT p.*, c.name as category_name 
+    SELECT p.*, 
+           c.name as category_name,
+           c.slug as category_slug,
+           mt.name as material_name,
+           vt.name as variant_name
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
-    WHERE p.is_popular = 1 AND p.status = 1 
+    LEFT JOIN material_types mt ON p.material_type_id = mt.id
+    LEFT JOIN variant_types vt ON p.variant_type_id = vt.id
+    WHERE p.is_popular = 1 
+    ORDER BY p.created_at DESC
     LIMIT 5
 ");
+
+// Function to get product image path
+function getProductImage($product) {
+    if (empty($product['image1'])) {
+        return "/proglide/assets/no-image.png";
+    }
+    
+    $category_slug = $product['category_slug'] ?? 'general';
+    
+    // Try new path with category slug
+    $new_path = "/proglide/uploads/products/" . $category_slug . "/" . $product['image1'];
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $new_path)) {
+        return $new_path;
+    }
+    
+    // Try old path
+    $old_path = "/proglide/uploads/products/" . $product['image1'];
+    if (file_exists($_SERVER['DOCUMENT_ROOT'] . $old_path)) {
+        return $old_path;
+    }
+    
+    return "/proglide/assets/no-image.png";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Admin Dashboard | PROGLIDE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * {
             margin: 0;
@@ -90,7 +133,7 @@ $popular_products = $conn->query("
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--dark-bg);
-            color: var(--text-primary);
+            color: var(--text-primary)!important;
             line-height: 1.6;
             overflow-x: hidden;
         }
@@ -298,7 +341,7 @@ $popular_products = $conn->query("
         }
 
         .logout-btn:hover {
-            background: var(--primary);
+            background: var(--primary)!important;
             color: white;
             border-color: var(--primary);
         }
@@ -308,10 +351,10 @@ $popular_products = $conn->query("
             padding: 30px;
         }
 
-        /* Stats Grid */
+        /* Stats Grid - 2 per row on mobile */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 25px;
             margin-bottom: 40px;
         }
@@ -390,10 +433,14 @@ $popular_products = $conn->query("
 
         .stat-trend {
             font-size: 0.85rem;
-            color: var(--success);
             display: flex;
             align-items: center;
             gap: 5px;
+            color: var(--success);
+        }
+
+        .stat-trend.warning {
+            color: var(--warning);
         }
 
         /* Section Styles */
@@ -430,21 +477,49 @@ $popular_products = $conn->query("
             gap: 10px;
         }
 
-        /* Quick Actions */
+        /* Quick Actions - Horizontal Scroll */
         .quick-actions {
             margin-bottom: 40px;
         }
 
+        .actions-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--dark-border);
+            padding: 5px 0 15px 0;
+            scroll-behavior: smooth;
+        }
+
+        .actions-scroll-container::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .actions-scroll-container::-webkit-scrollbar-track {
+            background: var(--dark-border);
+            border-radius: 10px;
+        }
+
+        .actions-scroll-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
         .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
             gap: 20px;
+            width: max-content;
+            padding: 5px 0;
         }
 
         .action-card {
+            width: 220px;
+            min-width: 220px;
             background: var(--dark-card);
             border-radius: var(--radius);
-            padding: 25px;
+            padding: 20px;
             border: 1px solid var(--dark-border);
             text-align: center;
             text-decoration: none;
@@ -468,14 +543,14 @@ $popular_products = $conn->query("
         }
 
         .action-card h3 {
-            font-size: 1.1rem;
+            font-size: 1rem;
             margin-bottom: 8px;
             font-weight: 600;
         }
 
         .action-card p {
             color: var(--text-secondary);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             line-height: 1.5;
         }
 
@@ -523,7 +598,7 @@ $popular_products = $conn->query("
             background: var(--dark-hover);
         }
 
-        .order-status {
+        .order-status, .payment-status {
             padding: 5px 12px;
             border-radius: 20px;
             font-size: 0.8rem;
@@ -531,7 +606,7 @@ $popular_products = $conn->query("
             display: inline-block;
         }
 
-        .status-pending {
+        .status-pending, .payment-pending {
             background: rgba(255, 193, 7, 0.1);
             color: #FFC107;
         }
@@ -541,40 +616,17 @@ $popular_products = $conn->query("
             color: #2196F3;
         }
 
-        .status-delivered {
+        .status-delivered, .payment-paid {
             background: rgba(76, 175, 80, 0.1);
             color: #4CAF50;
         }
 
-        .status-cancelled {
+        .status-cancelled, .payment-failed {
             background: rgba(244, 67, 54, 0.1);
             color: #F44336;
         }
 
-        .payment-status {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .payment-paid {
-            background: rgba(76, 175, 80, 0.1);
-            color: #4CAF50;
-        }
-
-        .payment-pending {
-            background: rgba(255, 193, 7, 0.1);
-            color: #FFC107;
-        }
-
-        .payment-failed {
-            background: rgba(244, 67, 54, 0.1);
-            color: #F44336;
-        }
-
-        /* Popular Products */
+        /* Popular Products with Images */
         .popular-products {
             background: var(--dark-card);
             border-radius: var(--radius);
@@ -604,15 +656,26 @@ $popular_products = $conn->query("
         }
 
         .product-image {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             background: var(--dark-border);
             border-radius: var(--radius-sm);
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--primary);
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .product-image i {
             font-size: 1.5rem;
+            color: var(--primary);
+            opacity: 0.5;
         }
 
         .product-info {
@@ -628,15 +691,94 @@ $popular_products = $conn->query("
         .product-info p {
             font-size: 0.85rem;
             color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .product-info p span {
+            background: var(--dark-hover);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
         }
 
         .product-price {
             font-weight: 600;
             color: var(--primary);
             font-size: 1.1rem;
+            text-align: right;
         }
 
-        /* Responsive */
+        .original-price {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-decoration: line-through;
+            margin-right: 8px;
+        }
+
+        /* Welcome Section */
+        .welcome-section {
+            background: linear-gradient(135deg, var(--dark-card), var(--dark-hover));
+            border-radius: var(--radius);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid var(--dark-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .welcome-text h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text h1 span {
+            color: var(--primary);
+        }
+
+        .welcome-text p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .welcome-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .welcome-stat {
+            text-align: center;
+            padding: 0 15px;
+            border-right: 1px solid var(--dark-border);
+        }
+
+        .welcome-stat:last-child {
+            border-right: none;
+        }
+
+        .welcome-stat .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .welcome-stat .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+        }
+
         @media (max-width: 992px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -673,30 +815,8 @@ $popular_products = $conn->query("
             }
 
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
                 gap: 15px;
-            }
-
-            .actions-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                padding: 0 20px;
-            }
-
-            .header-left h2 {
-                font-size: 1.2rem;
-            }
-
-            th, td {
-                padding: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .dashboard-content {
-                padding: 15px;
             }
 
             .stat-card {
@@ -707,19 +827,119 @@ $popular_products = $conn->query("
                 font-size: 1.5rem;
             }
 
+            .stat-label {
+                font-size: 0.8rem;
+            }
+
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+                margin-bottom: 15px;
+            }
+
             .section-header h2 {
                 font-size: 1.1rem;
+            }
+
+            .action-card {
+                width: 180px;
+                min-width: 180px;
+                padding: 15px;
+            }
+
+            .welcome-section {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
+            }
+
+            .welcome-stats {
+                width: 100%;
+                justify-content: space-around;
+            }
+
+            .welcome-stat {
+                padding: 0 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-content {
+                padding: 15px;
+            }
+
+            .stats-grid {
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+
+            .stat-value {
+                font-size: 1.3rem;
+            }
+
+            .stat-label {
+                font-size: 0.7rem;
+            }
+
+            .stat-icon {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+
+            .action-card {
+                width: 160px;
+                min-width: 160px;
+                padding: 12px;
+            }
+
+            .welcome-text h1 {
+                font-size: 1.4rem;
+            }
+
+            .welcome-stat .value {
+                font-size: 1.2rem;
             }
         }
     </style>
 </head>
 <body>
-<?php include "includes/header.php"; ?>   
-<?php include "includes/sidebar.php"; ?>
+    <!-- Header and Sidebar are included automatically -->
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header is already included via includes/header.php -->
         
-<!-- Dashboard Content -->
+        <!-- Dashboard Content -->
         <div class="dashboard-content">
-            <!-- Stats Grid -->
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div class="welcome-text">
+                    <h1>Welcome back, <span><?php echo htmlspecialchars($_SESSION['admin_name'] ?? 'Admin'); ?></span>!</h1>
+                    <p>Here's what's happening with your store today.</p>
+                </div>
+                <div class="welcome-stats">
+                    <div class="welcome-stat">
+                        <div class="value"><?php echo $total_products; ?></div>
+                        <div class="label">Products</div>
+                    </div>
+                    <div class="welcome-stat">
+                        <div class="value"><?php echo $total_orders; ?></div>
+                        <div class="label">Orders</div>
+                    </div>
+                    <div class="welcome-stat">
+                        <div class="value"><?php echo $total_users; ?></div>
+                        <div class="label">Customers</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Grid - 2 per row on mobile -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">
@@ -731,8 +951,8 @@ $popular_products = $conn->query("
                             <div class="stat-label">Total Products</div>
                         </div>
                         <div class="stat-trend">
-                            <i class="fas fa-arrow-up"></i>
-                            Active
+                            <i class="fas fa-check-circle"></i>
+                            In Stock
                         </div>
                     </div>
                 </div>
@@ -746,9 +966,9 @@ $popular_products = $conn->query("
                             <div class="stat-value"><?php echo $total_orders; ?></div>
                             <div class="stat-label">Total Orders</div>
                         </div>
-                        <div class="stat-trend">
+                        <div class="stat-trend <?php echo $pending_orders > 0 ? 'warning' : ''; ?>">
                             <i class="fas fa-clock"></i>
-                            Pending: 0
+                            <?php echo $pending_orders; ?> Pending
                         </div>
                     </div>
                 </div>
@@ -775,7 +995,7 @@ $popular_products = $conn->query("
                     </div>
                     <div class="stat-details">
                         <div class="stat-info">
-                            <div class="stat-value">₹<?php echo number_format($revenue, 2); ?></div>
+                            <div class="stat-value">₹<?php echo number_format($revenue); ?></div>
                             <div class="stat-label">Total Revenue</div>
                         </div>
                         <div class="stat-trend">
@@ -786,54 +1006,68 @@ $popular_products = $conn->query("
                 </div>
             </div>
             
-            <!-- Quick Actions -->
+            <!-- Quick Actions - Horizontal Scroll -->
             <div class="quick-actions">
                 <div class="section-header">
                     <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
                 </div>
-                <div class="actions-grid">
-                    <a href="add_product.php" class="action-card">
-                        <i class="fas fa-plus-circle"></i>
-                        <h3>Add Product</h3>
-                        <p>Add new products to store</p>
-                    </a>
-                    
-                    <a href="products.php" class="action-card">
-                        <i class="fas fa-edit"></i>
-                        <h3>Manage Products</h3>
-                        <p>Edit or delete products</p>
-                    </a>
-                    
-                    <a href="categories.php" class="action-card">
-                        <i class="fas fa-tags"></i>
-                        <h3>Categories</h3>
-                        <p>Manage product categories</p>
-                    </a>
-                    
-                    <a href="orders.php" class="action-card">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h3>View Orders</h3>
-                        <p>Check and manage orders</p>
-                    </a>
-                    
-                    <a href="brands.php" class="action-card">
-                        <i class="fas fa-tag"></i>
-                        <h3>Brands</h3>
-                        <p>Manage phone brands</p>
-                    </a>
-                    
-                    <a href="phone_models.php" class="action-card">
-                        <i class="fas fa-mobile-alt"></i>
-                        <h3>Phone Models</h3>
-                        <p>Add phone models</p>
-                    </a>
+                <div class="actions-scroll-container">
+                    <div class="actions-grid">
+                        <a href="add_product.php" class="action-card">
+                            <i class="fas fa-plus-circle"></i>
+                            <h3>Add Product</h3>
+                            <p>Add new products to store</p>
+                        </a>
+                        
+                        <a href="products.php" class="action-card">
+                            <i class="fas fa-edit"></i>
+                            <h3>Manage Products</h3>
+                            <p>Edit or delete products</p>
+                        </a>
+                        
+                        <a href="categories.php" class="action-card">
+                            <i class="fas fa-tags"></i>
+                            <h3>Categories</h3>
+                            <p>Manage product categories</p>
+                        </a>
+                        
+                        <a href="orders.php" class="action-card">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h3>View Orders</h3>
+                            <p>Check and manage orders</p>
+                        </a>
+                        
+                        <a href="brands.php" class="action-card">
+                            <i class="fas fa-tag"></i>
+                            <h3>Brands</h3>
+                            <p>Manage phone brands</p>
+                        </a>
+                        
+                        <a href="phone_models.php" class="action-card">
+                            <i class="fas fa-mobile-alt"></i>
+                            <h3>Phone Models</h3>
+                            <p>Add phone models</p>
+                        </a>
+                        
+                        <a href="material_types.php" class="action-card">
+                            <i class="fas fa-cube"></i>
+                            <h3>Materials</h3>
+                            <p>Manage material types</p>
+                        </a>
+                        
+                        <a href="variant_types.php" class="action-card">
+<i class="fas fa-swatchbook"></i>
+                            <h3>Variants</h3>
+                            <p>Manage variants</p>
+                        </a>
+                    </div>
                 </div>
             </div>
             
-            <!-- Recent Orders -->
+            <!-- Recent Orders - LAST 5 ONLY -->
             <div class="recent-orders">
                 <div class="section-header" style="padding: 20px 20px 0 20px;">
-                    <h2><i class="fas fa-clock"></i> Recent Orders</h2>
+                    <h2><i class="fas fa-clock"></i> Recent Orders (Last 5)</h2>
                     <a href="orders.php" class="view-all">
                         View All <i class="fas fa-arrow-right"></i>
                     </a>
@@ -855,9 +1089,9 @@ $popular_products = $conn->query("
                             <?php if ($recent_orders && $recent_orders->num_rows > 0): ?>
                                 <?php while($order = $recent_orders->fetch_assoc()): ?>
                                     <tr>
-                                        <td>#<?php echo $order['id']; ?></td>
+                                        <td><strong>#<?php echo $order['id']; ?></strong></td>
                                         <td><?php echo htmlspecialchars($order['user_name']); ?></td>
-                                        <td>₹<?php echo number_format($order['total_amount'], 2); ?></td>
+                                        <td><strong>₹<?php echo number_format($order['total_amount'], 2); ?></strong></td>
                                         <td>
                                             <span class="order-status status-<?php echo strtolower($order['status']); ?>">
                                                 <?php echo $order['status']; ?>
@@ -879,7 +1113,7 @@ $popular_products = $conn->query("
                             <?php else: ?>
                                 <tr>
                                     <td colspan="7" style="text-align: center; padding: 40px;">
-                                        <i class="fas fa-shopping-cart" style="font-size: 2rem; color: var(--text-muted; margin-bottom: 10px;"></i>
+                                        <i class="fas fa-shopping-cart" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 10px;"></i>
                                         <p style="color: var(--text-muted);">No orders yet</p>
                                     </td>
                                 </tr>
@@ -889,7 +1123,7 @@ $popular_products = $conn->query("
                 </div>
             </div>
             
-            <!-- Popular Products -->
+            <!-- Popular Products with Images -->
             <div class="popular-products">
                 <div class="section-header" style="padding: 20px 20px 0 20px;">
                     <h2><i class="fas fa-star"></i> Popular Products</h2>
@@ -899,17 +1133,39 @@ $popular_products = $conn->query("
                 </div>
                 <div class="product-list">
                     <?php if ($popular_products && $popular_products->num_rows > 0): ?>
-                        <?php while($product = $popular_products->fetch_assoc()): ?>
+                        <?php while($product = $popular_products->fetch_assoc()): 
+                            $product_name = $product['design_name'] ?? $product['model_name'] ?? 'Product';
+                            $image_path = getProductImage($product);
+                            $discount = 0;
+                            if (!empty($product['original_price']) && $product['original_price'] > $product['price']) {
+                                $discount = round((($product['original_price'] - $product['price']) / $product['original_price']) * 100);
+                            }
+                        ?>
                             <div class="product-item">
                                 <div class="product-image">
-                                    <i class="fas fa-box"></i>
+                                    <?php if ($image_path != "/proglide/assets/no-image.png"): ?>
+                                        <img src="<?php echo $image_path; ?>" alt="<?php echo htmlspecialchars($product_name); ?>">
+                                    <?php else: ?>
+                                        <i class="fas fa-box"></i>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="product-info">
-                                    <h4><?php echo htmlspecialchars($product['design_name'] ?? $product['model_name'] ?? 'Product'); ?></h4>
-                                    <p><?php echo htmlspecialchars($product['category_name']); ?></p>
+                                    <h4><?php echo htmlspecialchars($product_name); ?></h4>
+                                    <p>
+                                        <?php echo htmlspecialchars($product['category_name']); ?>
+                                        <?php if (!empty($product['material_name'])): ?>
+                                            <span><?php echo htmlspecialchars($product['material_name']); ?></span>
+                                        <?php endif; ?>
+                                    </p>
                                 </div>
                                 <div class="product-price">
-                                    ₹<?php echo number_format($product['price'], 2); ?>
+                                    <?php if (!empty($product['original_price']) && $product['original_price'] > $product['price']): ?>
+                                        <span class="original-price">₹<?php echo number_format($product['original_price']); ?></span>
+                                    <?php endif; ?>
+                                    ₹<?php echo number_format($product['price']); ?>
+                                    <?php if ($discount > 0): ?>
+                                        <br><small style="color: var(--success); font-size: 0.7rem;">-<?php echo $discount; ?>%</small>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endwhile; ?>
@@ -939,28 +1195,15 @@ $popular_products = $conn->query("
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 992 && 
-                !sidebar.contains(e.target) && 
-                !menuToggle.contains(e.target)) {
+                sidebar && !sidebar.contains(e.target) && 
+                menuToggle && !menuToggle.contains(e.target)) {
                 sidebar.classList.remove('active');
-            }
-        });
-        
-        // Add active class to current page
-        const currentPage = window.location.pathname.split('/').pop();
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        navLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage || (currentPage === '' && href === 'index.php')) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
             }
         });
         
         // Responsive resize handler
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 992) {
+            if (window.innerWidth > 992 && sidebar) {
                 sidebar.classList.remove('active');
             }
         });

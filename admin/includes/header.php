@@ -7,9 +7,8 @@ $admin_initial = strtoupper(substr($admin_name, 0, 1));
 <div class="header">
     <div class="header-left">
         <button class="menu-toggle">
-            <i class="fas fa-bars"></i>
+            <i class="bi bi-list"></i> <!-- Bootstrap icon -->
         </button>
-        <h2><i class="<?php echo $page_icon ?? 'fas fa-tachometer-alt'; ?>"></i> <?php echo $page_title ?? 'Dashboard'; ?></h2>
     </div>
     
     <div class="header-right">
@@ -23,7 +22,7 @@ $admin_initial = strtoupper(substr($admin_name, 0, 1));
             </div>
         </div>
         <button class="logout-btn" onclick="window.location.href='logout.php'">
-            <i class="fas fa-sign-out-alt"></i>
+            <i class="bi bi-box-arrow-right"></i> <!-- Bootstrap icon -->
             <span>Logout</span>
         </button>
     </div>

@@ -2,10 +2,14 @@
 require "includes/admin_db.php";
 require "includes/admin_auth.php";
 
+// Page title for header
+$page_title = "Add Product";
+$page_icon = "fas fa-plus-circle";
+
 // Get all categories for dropdown
 $categories = $conn->query("SELECT * FROM categories WHERE status = 1 ORDER BY name");
 
-// Get all brands for dropdown
+// Get all brands for dropdown (if needed)
 $brands = $conn->query("SELECT * FROM brands WHERE status = 1 ORDER BY name");
 
 // Initialize variables
@@ -212,10 +216,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Product | PROGLIDE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Add Product | PROGLIDE Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
         * {
             margin: 0;
             padding: 0;
@@ -334,13 +339,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             font-size: 1.1rem;
         }
 
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            min-height: 100vh;
-            transition: var(--transition);
-        }
-
         /* Header */
         .header {
             height: var(--header-height);
@@ -353,6 +351,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             position: sticky;
             top: 0;
             z-index: 999;
+            margin-left: var(--sidebar-width);
         }
 
         .header-left {
@@ -451,6 +450,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             background: var(--primary);
             color: white;
             border-color: var(--primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: var(--transition);
         }
 
         /* Content */
@@ -584,7 +590,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             margin-top: 5px;
         }
 
-        /* Image Upload */
+        /* ============================================
+           IMAGE UPLOAD - FIXED FOR MOBILE
+           ============================================ */
         .image-upload-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -594,16 +602,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
 
         .image-upload-wrapper {
             position: relative;
+            width: 100%;
         }
 
         .image-upload-box {
             background: var(--dark-hover);
             border: 2px dashed var(--dark-border);
             border-radius: var(--radius-sm);
-            padding: 20px;
+            padding: 20px 10px;
             text-align: center;
             transition: var(--transition);
             cursor: pointer;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .image-upload-box:hover {
@@ -633,12 +647,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             position: relative;
             border-radius: var(--radius-sm);
             overflow: hidden;
+            width: 100%;
+            min-height: 180px;
+            background: var(--dark-hover);
         }
 
         .image-preview img {
             width: 100%;
-            height: 150px;
+            height: 180px;
             object-fit: cover;
+            display: block;
         }
 
         .image-preview .remove-image {
@@ -656,6 +674,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             justify-content: center;
             cursor: pointer;
             transition: var(--transition);
+            z-index: 10;
         }
 
         .image-preview .remove-image:hover {
@@ -666,7 +685,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
         .switch-group {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 30px;
             flex-wrap: wrap;
         }
 
@@ -809,7 +828,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             font-weight: 600;
         }
 
-        /* Responsive */
+        /* ============================================
+           RESPONSIVE DESIGN - FIXED FOR MOBILE
+           ============================================ */
+        @media (max-width: 1200px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 992px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -817,6 +844,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             
             .sidebar.active {
                 transform: translateX(0);
+            }
+            
+            .header {
+                margin-left: 0;
             }
             
             .main-content {
@@ -846,10 +877,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             .form-group.full-width {
                 grid-column: span 1;
             }
-
-            .image-upload-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         @media (max-width: 768px) {
@@ -869,6 +896,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                 padding: 20px;
             }
 
+            /* Image upload - Single row on mobile */
+            .image-upload-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .image-upload-box {
+                min-height: 150px;
+                padding: 15px;
+            }
+
+            .image-preview {
+                min-height: 150px;
+            }
+
+            .image-preview img {
+                height: 150px;
+            }
+
             .form-actions {
                 flex-direction: column;
             }
@@ -876,6 +922,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             .btn {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .switch-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
             }
         }
 
@@ -887,12 +939,45 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             .form-card {
                 padding: 15px;
             }
+
+            .image-upload-box i {
+                font-size: 1.8rem;
+            }
+
+            .image-upload-box p {
+                font-size: 0.85rem;
+            }
+
+            .image-upload-box span {
+                font-size: 0.7rem;
+            }
+
+            .form-title {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 360px) {
+            .image-upload-box {
+                min-height: 130px;
+                padding: 10px;
+            }
+
+            .image-preview {
+                min-height: 130px;
+            }
+
+            .image-preview img {
+                height: 130px;
+            }
         }
     </style>
 </head>
 <body>
-     <?php include "includes/header.php"; ?>   
-<?php include "includes/sidebar.php"; ?>
+    <?php include "includes/header.php"; ?>   
+    <?php include "includes/sidebar.php"; ?>
+    
     <div class="main-content">   
         <!-- Content -->
         <div class="content">
@@ -929,8 +1014,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             <!-- Add Product Form -->
             <div class="form-card">
                 <div class="form-title">
-                    <i class="fas fa-box"></i>
-                    <h2>Product Information</h2>
+                    <i class="fas fa-plus-circle"></i>
+                    <h2>Add New Product</h2>
                 </div>
                 
                 <form action="" method="POST" enctype="multipart/form-data" id="addProductForm">
@@ -970,7 +1055,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                         <!-- Variant Type -->
                         <div class="form-group">
                             <label>
-                                <i class="fas fa-paint-bucket"></i>
+                                <i class="fas fa-palette"></i>
                                 Variant Type (Optional)
                             </label>
                             <select name="variant_type_id" id="variant_type_id" class="form-control">
@@ -978,8 +1063,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                             </select>
                         </div>
                         
-                        <!-- Design Name -->
-                        <div class="form-group">
+                        <!-- Design Name (for Back Cases) -->
+                        <div class="form-group" id="design_name_group">
                             <label>
                                 <i class="fas fa-pencil-alt"></i>
                                 Design Name
@@ -987,26 +1072,26 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                             <input type="text" name="design_name" class="form-control" 
                                    placeholder="Enter design name" 
                                    value="<?php echo htmlspecialchars($design_name); ?>">
-                            <div class="form-text">Leave blank if using model name only</div>
+                            <div class="form-text">For back cases and designs</div>
                         </div>
                         
-                        <!-- Model Name -->
-                        <div class="form-group">
+                        <!-- Model Name (for Protectors/Batteries) -->
+                        <div class="form-group" id="model_name_group">
                             <label>
                                 <i class="fas fa-tag"></i>
                                 Model Name
                             </label>
                             <input type="text" name="model_name" class="form-control" 
-                                   placeholder="Enter model name" 
+                                   placeholder="Enter model name (e.g., vivo t1)" 
                                    value="<?php echo htmlspecialchars($model_name); ?>">
-                            <div class="form-text">Leave blank if using design name only</div>
+                            <div class="form-text">For screen protectors, batteries etc.</div>
                         </div>
                         
                         <!-- Price -->
                         <div class="form-group">
                             <label class="required">
                                 <i class="fas fa-rupee-sign"></i>
-                                Selling Price
+                                Selling Price (₹)
                             </label>
                             <input type="number" name="price" class="form-control" 
                                    placeholder="0.00" step="0.01" min="0" 
@@ -1042,7 +1127,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                                 Product Images
                             </label>
                             <div class="image-upload-grid">
-                                <!-- Image 1 -->
+                                <!-- Image 1 - Main -->
                                 <div class="image-upload-wrapper">
                                     <div id="image1-preview" class="image-preview">
                                         <img src="" alt="Preview">
@@ -1159,8 +1244,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 992 && 
-                !sidebar.contains(e.target) && 
-                !menuToggle.contains(e.target)) {
+                sidebar && !sidebar.contains(e.target) && 
+                menuToggle && !menuToggle.contains(e.target)) {
                 sidebar.classList.remove('active');
             }
         });
@@ -1168,6 +1253,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
         // Add active class to current page
         const currentPage = window.location.pathname.split('/').pop();
         const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+        });
         
         navLinks.forEach(link => {
             const href = link.getAttribute('href');
@@ -1183,6 +1272,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             const variantSelect = document.getElementById('variant_type_id');
             const folderInfo = document.getElementById('folderInfo');
             const folderPath = document.getElementById('folderPath');
+            const designNameGroup = document.getElementById('design_name_group');
+            const modelNameGroup = document.getElementById('model_name_group');
             
             // Get selected option's slug
             const selectedOption = this.options[this.selectedIndex];
@@ -1210,18 +1301,33 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                     .then(html => {
                         variantSelect.innerHTML = html;
                     });
+                
+                // Show/hide design name and model name based on category
+                if (categoryId == 2) { // Back Cases
+                    designNameGroup.style.display = 'flex';
+                    modelNameGroup.style.display = 'none';
+                } else {
+                    designNameGroup.style.display = 'none';
+                    modelNameGroup.style.display = 'flex';
+                }
             } else {
                 folderInfo.style.display = 'none';
                 materialSelect.innerHTML = '<option value="">Select Category First</option>';
                 variantSelect.innerHTML = '<option value="">Select Category First</option>';
+                designNameGroup.style.display = 'flex';
+                modelNameGroup.style.display = 'flex';
             }
         });
         
-        // Trigger category change on page load if category is selected
+        // Set initial visibility based on selected category
         window.addEventListener('load', function() {
             const categorySelect = document.getElementById('category_id');
             if (categorySelect.value) {
                 categorySelect.dispatchEvent(new Event('change'));
+            } else {
+                // Default: show both groups
+                document.getElementById('design_name_group').style.display = 'flex';
+                document.getElementById('model_name_group').style.display = 'flex';
             }
         });
         
@@ -1253,7 +1359,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
             const fileInput = document.getElementById('file' + imageNumber);
             
             preview.style.display = 'none';
-            uploadBox.style.display = 'block';
+            uploadBox.style.display = 'flex';
             fileInput.value = '';
         }
         
@@ -1282,7 +1388,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
                 return;
             }
             
-            if (!material || material === '') {
+            if (!material || material === '' || material === 'Select Category First') {
                 alert('Please select a material type');
                 e.preventDefault();
                 return;
@@ -1303,7 +1409,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 'get_variants') {
         
         // Responsive resize handler
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 992) {
+            if (window.innerWidth > 992 && sidebar) {
                 sidebar.classList.remove('active');
             }
         });

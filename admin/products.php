@@ -2,6 +2,10 @@
 require "includes/admin_db.php";
 require "includes/admin_auth.php";
 
+// Page title for header
+$page_title = "Products Management";
+$page_icon = "fas fa-box";
+
 // Handle product deletion
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $product_id = $_GET['delete'];
@@ -126,7 +130,7 @@ $stmt->execute();
 $total_products = $stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_products / $limit);
 
-// Get products with joins - FIXED: Added category slug
+// Get products with joins
 $query = "SELECT p.*, 
           c.name as category_name, 
           c.id as category_id,
@@ -183,6 +187,7 @@ function getProductImagePath($category_slug, $image_name) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products Management | PROGLIDE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         * {
             margin: 0;
@@ -221,7 +226,7 @@ function getProductImagePath($category_slug, $image_name) {
             overflow-x: hidden;
         }
 
-        /* Sidebar */
+        /* Sidebar Styles */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--dark-card);
@@ -302,9 +307,7 @@ function getProductImagePath($category_slug, $image_name) {
             font-size: 1.1rem;
         }
 
-       
-
-        /* Header */
+        /* Header Styles */
         .header {
             height: var(--header-height);
             background: var(--dark-card);
@@ -316,6 +319,7 @@ function getProductImagePath($category_slug, $image_name) {
             position: sticky;
             top: 0;
             z-index: 999;
+            margin-left: var(--sidebar-width);
         }
 
         .header-left {
@@ -414,6 +418,13 @@ function getProductImagePath($category_slug, $image_name) {
             background: var(--primary);
             color: white;
             border-color: var(--primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: var(--transition);
         }
 
         /* Content */
@@ -658,6 +669,7 @@ function getProductImagePath($category_slug, $image_name) {
             font-size: 0.8rem;
             font-weight: 600;
             display: inline-block;
+            text-decoration: none;
         }
 
         .badge-success {
@@ -787,91 +799,6 @@ function getProductImagePath($category_slug, $image_name) {
             border-color: var(--primary);
         }
 
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .filters-form {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .menu-toggle {
-                display: block;
-            }
-
-            .admin-info {
-                display: none;
-            }
-
-            .logout-btn span {
-                display: none;
-            }
-
-            .logout-btn {
-                padding: 10px 15px;
-            }
-
-            .filters-form {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .content {
-                padding: 20px;
-            }
-
-            .header-actions {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .header {
-                padding: 0 20px;
-            }
-
-            .header-left h2 {
-                font-size: 1.2rem;
-            }
-
-            th, td {
-                padding: 15px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .product-image {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .content {
-                padding: 15px;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
         /* Modal */
         .modal {
             display: none;
@@ -953,13 +880,102 @@ function getProductImagePath($category_slug, $image_name) {
             justify-content: flex-end;
             gap: 15px;
         }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .filters-form {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .header {
+                margin-left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+
+            .admin-info {
+                display: none;
+            }
+
+            .logout-btn span {
+                display: none;
+            }
+
+            .logout-btn {
+                padding: 10px 15px;
+            }
+
+            .filters-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+
+            .header-actions {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header {
+                padding: 0 20px;
+            }
+
+            .header-left h2 {
+                font-size: 1.2rem;
+            }
+
+            th, td {
+                padding: 15px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .product-image {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content {
+                padding: 15px;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
-  <?php include "includes/header.php"; ?>   
-<?php include "includes/sidebar.php"; ?>
-    <div class="main-content"></div>
-        
+    <?php include "includes/header.php"; ?>   
+    <?php include "includes/sidebar.php"; ?>
+    
+    <div class="main-content">
         <!-- Content -->
         <div class="content">
             <!-- Alerts -->
@@ -998,7 +1014,7 @@ function getProductImagePath($category_slug, $image_name) {
                     
                     <div class="form-group">
                         <label>Category</label>
-                        <select name="category" class="form-control">
+                        <select name="category" class="form-control" id="filterCategory">
                             <option value="">All Categories</option>
                             <?php 
                             $categories->data_seek(0);
@@ -1054,6 +1070,7 @@ function getProductImagePath($category_slug, $image_name) {
                             <?php if ($products && $products->num_rows > 0): ?>
                                 <?php while($product = $products->fetch_assoc()): 
                                     $image_path = getProductImagePath($product['category_slug'] ?? 'general', $product['image1']);
+                                    $product_name = $product['design_name'] ?? $product['model_name'] ?? 'Unnamed Product';
                                 ?>
                                     <tr>
                                         <td>
@@ -1061,17 +1078,17 @@ function getProductImagePath($category_slug, $image_name) {
                                                 <div class="product-image">
                                                     <?php if ($product['image1']): ?>
                                                         <img src="<?php echo $image_path; ?>" 
-                                                             alt="<?php echo htmlspecialchars($product['design_name'] ?? $product['model_name']); ?>"
+                                                             alt="<?php echo htmlspecialchars($product_name); ?>"
                                                              onerror="this.src='/proglide/assets/no-image.png'">
                                                     <?php else: ?>
                                                         <i class="fas fa-box"></i>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="product-info">
-                                                    <h4><?php echo htmlspecialchars($product['design_name'] ?? $product['model_name'] ?? 'Unnamed Product'); ?></h4>
+                                                    <h4><?php echo htmlspecialchars($product_name); ?></h4>
                                                     <p>ID: #<?php echo $product['id']; ?></p>
                                                     <?php if ($product['design_name'] && $product['model_name']): ?>
-                                                        <p style="font-size: 0.8rem;"><?php echo htmlspecialchars($product['model_name']); ?></p>
+                                                        <p style="font-size: 0.8rem;">Model: <?php echo htmlspecialchars($product['model_name']); ?></p>
                                                     <?php endif; ?>
                                                     <?php if ($product['category_slug']): ?>
                                                         <span class="folder-info">
@@ -1088,7 +1105,7 @@ function getProductImagePath($category_slug, $image_name) {
                                         </td>
                                         <td>
                                             <span class="price">₹<?php echo number_format($product['price'], 2); ?></span>
-                                            <?php if ($product['original_price'] && $product['original_price'] > $product['price']): ?>
+                                            <?php if (!empty($product['original_price']) && $product['original_price'] > $product['price']): ?>
                                                 <span class="original-price">₹<?php echo number_format($product['original_price'], 2); ?></span>
                                             <?php endif; ?>
                                         </td>
@@ -1124,7 +1141,7 @@ function getProductImagePath($category_slug, $image_name) {
                                                     <i class="fas fa-edit"></i>
                                                     Edit
                                                 </a>
-                                                <a href="#" onclick="confirmDelete(<?php echo $product['id']; ?>, '<?php echo addslashes($product['design_name'] ?? $product['model_name'] ?? 'Product'); ?>')" 
+                                                <a href="#" onclick="confirmDelete(<?php echo $product['id']; ?>, '<?php echo addslashes($product_name); ?>')" 
                                                    class="action-btn delete" title="Delete Product">
                                                     <i class="fas fa-trash"></i>
                                                     Delete
@@ -1229,8 +1246,8 @@ function getProductImagePath($category_slug, $image_name) {
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 992 && 
-                !sidebar.contains(e.target) && 
-                !menuToggle.contains(e.target)) {
+                sidebar && !sidebar.contains(e.target) && 
+                menuToggle && !menuToggle.contains(e.target)) {
                 sidebar.classList.remove('active');
             }
         });
@@ -1238,6 +1255,10 @@ function getProductImagePath($category_slug, $image_name) {
         // Add active class to current page
         const currentPage = window.location.pathname.split('/').pop();
         const navLinks = document.querySelectorAll('.nav-link');
+        
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+        });
         
         navLinks.forEach(link => {
             const href = link.getAttribute('href');
@@ -1288,7 +1309,7 @@ function getProductImagePath($category_slug, $image_name) {
         
         // Responsive resize handler
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 992) {
+            if (window.innerWidth > 992 && sidebar) {
                 sidebar.classList.remove('active');
             }
         });

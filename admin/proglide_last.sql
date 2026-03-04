@@ -452,3 +452,27 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+-- Order addresses table
+CREATE TABLE IF NOT EXISTS order_addresses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    address TEXT NOT NULL,
+    pincode VARCHAR(10) NOT NULL,
+    notes TEXT,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+-- Order payments table
+CREATE TABLE IF NOT EXISTS order_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    payment_proof VARCHAR(255),
+    payment_status ENUM('pending', 'paid', 'failed') DEFAULT 'pending',
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+ALTER TABLE orders 
+ADD COLUMN payment_method VARCHAR(50) DEFAULT 'cod' AFTER payment_status,
+ADD COLUMN payment_proof VARCHAR(255) NULL AFTER payment_method;
